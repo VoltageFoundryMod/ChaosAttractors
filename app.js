@@ -1957,13 +1957,19 @@ for (const id of [
 
 $("#btn-settings-reset").onclick = resetSettings;
 
-/* pointer: drag to rotate, shift-drag to pan, wheel to zoom */
+/* pointer: drag to rotate, right-drag or shift-drag to pan, wheel to zoom */
 let drag = null;
 scene.addEventListener("pointerdown", (e) => {
   scene.setPointerCapture(e.pointerId);
-  scene.classList.add("dragging");
-  drag = { x: e.clientX, y: e.clientY, pan: e.shiftKey };
+  const pan = e.shiftKey || e.button === 2 || e.button === 1;
+  scene.classList.add(pan ? "panning" : "dragging");
+  drag = { x: e.clientX, y: e.clientY, pan };
 });
+
+/* right-drag has to pan without the menu landing on top of it. The canvas is
+   the only place this is suppressed, and ⤓ PNG is the better way to save the
+   image anyway. */
+scene.addEventListener("contextmenu", (e) => e.preventDefault());
 scene.addEventListener("pointermove", (e) => {
   if (!drag) return;
   const dx = e.clientX - drag.x,
@@ -1981,7 +1987,7 @@ scene.addEventListener("pointermove", (e) => {
 });
 const endDrag = () => {
   drag = null;
-  scene.classList.remove("dragging");
+  scene.classList.remove("dragging", "panning");
 };
 scene.addEventListener("pointerup", endDrag);
 scene.addEventListener("pointercancel", endDrag);

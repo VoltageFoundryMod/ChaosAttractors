@@ -281,6 +281,9 @@ select.btn {
 #scene.dragging {
   cursor: grabbing;
 }
+#scene.panning {
+  cursor: move;
+}
 
 .legend {
   position: absolute;

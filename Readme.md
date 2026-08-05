@@ -204,7 +204,8 @@ for the current system.
 
 ### The view
 
-Drag to rotate, wheel to zoom, shift-drag to pan, double-click to reset. **XZ /
+Drag to rotate, wheel to zoom, right-drag (or shift-drag, or middle-drag) to
+pan, double-click to reset. **XZ /
 XY / YZ / ISO** snap to standard projections, and the little gizmo in the corner
 shows where each axis currently points. Several attractors are unrecognisable
 between one projection and another — Aizawa most dramatically.
