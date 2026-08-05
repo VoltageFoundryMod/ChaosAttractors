@@ -63,13 +63,18 @@ app.js          integrator, camera, renderer, diagnostics
 
 guide.html      this document, rendered as a reference page
 build-guide.js  regenerates guide.html from Readme.md
-md.js           the Markdown converter, shared by the build and the page</code></pre>
+md.js           the Markdown converter, shared by the build and the page
+
+.github/workflows/pages.yml   publishes the site to GitHub Pages</code></pre>
 <p>The <strong>📖 Reference</strong> button in the simulator opens <code>guide.html</code> — this file with a contents sidebar, in the same theme, in its own tab so the simulation keeps running. Each attractor's info panel also links to the section of §4 that covers it.</p>
 <p><code>guide.html</code> is generated and committed, so it works when opened directly from disk — browsers refuse to <code>fetch()</code> a local file from a <code>file://</code> page, so rendering the Markdown at runtime would break the double-click case. <strong>After editing this Readme, run <code>node build-guide.js</code></strong> to regenerate it. That script is the project's only build step and has no dependencies.</p>
 <p><strong>The ⟳ Refresh button</strong> on the reference page re-renders it from the current <code>Readme.md</code> without a terminal. It cannot run <code>build-guide.js</code> — a web page has no shell and no write access to disk, on any protocol — so what it does instead depends on how the page was opened:</p>
 <div class="g-tablewrap"><table><thead><tr><th>Opened as</th><th>What Refresh does</th></tr></thead><tbody><tr><td><code>http://</code> (any local server)</td><td>fetches <code>Readme.md</code> and re-renders immediately</td></tr><tr><td><code>file://</code></td><td><code>fetch</code> is blocked by the opaque origin, so it opens a file picker — choose <code>Readme.md</code></td></tr></tbody></table></div>
 <p>You can also <strong>drag a <code>.md</code> file onto the page</strong> at any time, which works in both cases. Both routes use the same converter as the build, <code>md.js</code>, so the result is identical to what the script would produce.</p>
 <p>The re-render lives in that tab only; nothing is written. When you are happy with it, run <code>node build-guide.js</code> to update the committed page.</p>
+<p><strong>Publishing.</strong> <code>.github/workflows/pages.yml</code> deploys the site to GitHub Pages on every push to <code>main</code>, and can be run by hand from the Actions tab. It checks that the scripts parse, regenerates <code>guide.html</code> from this file, and publishes — so the deployed reference is never stale, and it warns in the run log if the committed copy had drifted.</p>
+<p>One manual step is needed first, once: <strong>Settings → Pages → Build and deployment → Source → &quot;GitHub Actions&quot;</strong>. Without it the workflow runs but nothing is served.</p>
+<p>Nothing in the site uses absolute paths, so it works unchanged from a project sub-path such as <code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code>. Served over http the reference page's Refresh button works with no file picker.</p>
 <hr>
 <h2 id="1-what-a-strange-attractor-is"><a class="g-anchor" href="#1-what-a-strange-attractor-is">1. What a strange attractor is</a></h2>
 <p>Take a system whose future is completely determined by its present — three coupled differential equations, no randomness anywhere. Start it somewhere and let it run. Three things can happen:</p>

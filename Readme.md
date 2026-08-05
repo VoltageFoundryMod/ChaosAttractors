@@ -16,6 +16,8 @@ app.js          integrator, camera, renderer, diagnostics
 guide.html      this document, rendered as a reference page
 build-guide.js  regenerates guide.html from Readme.md
 md.js           the Markdown converter, shared by the build and the page
+
+.github/workflows/pages.yml   publishes the site to GitHub Pages
 ```
 
 The **📖 Reference** button in the simulator opens `guide.html` — this file with a
@@ -45,6 +47,20 @@ is identical to what the script would produce.
 
 The re-render lives in that tab only; nothing is written. When you are happy
 with it, run `node build-guide.js` to update the committed page.
+
+**Publishing.** `.github/workflows/pages.yml` deploys the site to GitHub Pages on
+every push to `main`, and can be run by hand from the Actions tab. It checks that
+the scripts parse, regenerates `guide.html` from this file, and publishes — so
+the deployed reference is never stale, and it warns in the run log if the
+committed copy had drifted.
+
+One manual step is needed first, once: **Settings → Pages → Build and deployment
+→ Source → "GitHub Actions"**. Without it the workflow runs but nothing is
+served.
+
+Nothing in the site uses absolute paths, so it works unchanged from a project
+sub-path such as `https://<user>.github.io/<repo>/`. Served over http the
+reference page's Refresh button works with no file picker.
 
 ---
 

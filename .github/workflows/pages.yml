@@ -1,0 +1,82 @@
+# ============================================================================
+# Publishes the simulator and the reference page to GitHub Pages.
+#
+# One-time setup in the repository: Settings → Pages → Build and deployment →
+# Source → "GitHub Actions". Without that, this workflow runs but nothing is
+# served.
+#
+# The site is static — there is nothing to compile. The only build step is
+# regenerating guide.html from Readme.md, which is done here so the published
+# reference can never be stale, even if someone edits the Readme and forgets to
+# run the script locally.
+# ============================================================================
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never publish two versions at once. A queued run is superseded by a newer
+# push, but a run that is already deploying is allowed to finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # A syntax error in any of these is a blank page for every visitor, and
+      # it costs a second to rule out before publishing.
+      - name: Check the scripts parse
+        run: |
+          for f in app.js attractors.js md.js build-guide.js; do
+            node --check "$f"
+          done
+
+      - name: Regenerate the reference page
+        run: node build-guide.js
+
+      # Non-fatal: the deployed page is correct either way, but a drifted
+      # committed copy means guide.html is wrong when opened from disk.
+      - name: Warn if the committed guide.html was out of date
+        run: |
+          if ! git diff --quiet -- guide.html; then
+            echo "::warning file=guide.html::guide.html was stale — run 'node build-guide.js' and commit the result."
+          fi
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          # Readme.md ships too: the reference page's Refresh button fetches it
+          # to re-render itself in the browser.
+          cp index.html guide.html styles.css app.js attractors.js md.js Readme.md _site/
+          # Belt and braces — stop Pages from ever running the files through Jekyll.
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
