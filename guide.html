@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference — Strange Attractors</title>
 <meta name="description" content="Study guide to deterministic chaos: what strange attractors are, how to read Lyapunov diagnostics, and a catalogue of fifteen systems.">
+<link rel="canonical" href="https://chaos.vfmod.com/guide.html">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🦋</text></svg>">
 </head>
@@ -73,8 +74,10 @@ md.js           the Markdown converter, shared by the build and the page
 <p>You can also <strong>drag a <code>.md</code> file onto the page</strong> at any time, which works in both cases. Both routes use the same converter as the build, <code>md.js</code>, so the result is identical to what the script would produce.</p>
 <p>The re-render lives in that tab only; nothing is written. When you are happy with it, run <code>node build-guide.js</code> to update the committed page.</p>
 <p><strong>Publishing.</strong> <code>.github/workflows/pages.yml</code> deploys the site to GitHub Pages on every push to <code>main</code>, and can be run by hand from the Actions tab. It checks that the scripts parse, regenerates <code>guide.html</code> from this file, and publishes — so the deployed reference is never stale, and it warns in the run log if the committed copy had drifted.</p>
-<p>One manual step is needed first, once: <strong>Settings → Pages → Build and deployment → Source → &quot;GitHub Actions&quot;</strong>. Without it the workflow runs but nothing is served.</p>
-<p>Nothing in the site uses absolute paths, so it works unchanged from a project sub-path such as <code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code>. Served over http the reference page's Refresh button works with no file picker.</p>
+<p>The published site is <strong><a href="https://chaos.vfmod.com" target="_blank" rel="noopener noreferrer">chaos.vfmod.com</a></strong>. Two manual steps are needed once, in the repository settings:</p>
+<ol><li><strong>Settings → Pages → Build and deployment → Source → &quot;GitHub Actions&quot;.</strong> Without it the workflow runs but nothing is served.</li><li><strong>Settings → Pages → Custom domain → <code>chaos.vfmod.com</code></strong>, with a DNS <code>CNAME</code> record pointing <code>chaos</code> at <code>&lt;user&gt;.github.io</code>.</li></ol>
+<p>The workflow also writes a <code>CNAME</code> file into the artifact. That is not redundant: with artifact-based deploys nothing in the repository itself carries the domain, so without it a deploy can fall back to the <code>github.io</code> address.</p>
+<p>Nothing in the site uses absolute paths, so it works unchanged from a custom domain, a project sub-path such as <code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code>, or a local folder. Served over http the reference page's Refresh button works with no file picker.</p>
 <hr>
 <h2 id="1-what-a-strange-attractor-is"><a class="g-anchor" href="#1-what-a-strange-attractor-is">1. What a strange attractor is</a></h2>
 <p>Take a system whose future is completely determined by its present — three coupled differential equations, no randomness anywhere. Start it somewhere and let it run. Three things can happen:</p>
@@ -212,10 +215,17 @@ escaping to infinity — try a smaller dt, or smaller parameters</code></pre>
 <ul><li><strong>James Gleick, <em>Chaos: Making a New Science</em> (1987)</strong> — the book that opened this up for everyone. Reads like a thriller, requires no mathematics, and the people in it (Lorenz, Rössler, Shaw, Feigenbaum, Mandelbrot) are the names attached to half the systems in this catalogue.</li><li><strong>Steven Strogatz, _Nonlinear Dynamics and Chaos_</strong> — the standard textbook, and unusually well written. Takes you from zero to deriving these systems yourself, with strong physical intuition throughout.</li><li><strong>Julien C. Sprott, _Chaos and Time-Series Analysis_</strong> and his <a href="http://sprott.physics.wisc.edu/" target="_blank" rel="noopener noreferrer">website</a> — the systematic catalogue, plus the numerical methods used in this simulator.</li><li><strong>Edward Lorenz, &quot;Deterministic Nonperiodic Flow&quot;, <em>J. Atmos. Sci.</em> 20 (1963)</strong> — the original paper. Short, and readable.</li><li>Each attractor's panel links its own key paper and a reference page.</li></ul>
 <h3 id="where-this-shows-up-elsewhere"><a class="g-anchor" href="#where-this-shows-up-elsewhere">Where this shows up elsewhere</a></h3>
 <p>The same mathematics describes dripping faucets, cardiac arrhythmias, population cycles in ecology, and turbulence — same equations, different variable names. Beyond the science, these systems have two lives worth knowing about. In <strong>circuit design</strong>, the Chua family is directly synthesisable in analog hardware. In <strong>analog synthesis</strong>, Thomas, Rössler and Chua are popular patch targets: routed into a modular synth they make LFOs and control voltages that evolve forever without repeating — bounded, structured, and never the same twice, which is a difficult thing to get from a noise source or a sequencer.</p>
+<hr>
+<p>© 2026 <a href="https://vfmod.com" target="_blank" rel="noopener noreferrer">Carlos Eduardo de Paula</a> · <a href="https://vfmod.com" target="_blank" rel="noopener noreferrer">Voltage Foundry Modular</a> · <a href="https://chaos.vfmod.com" target="_blank" rel="noopener noreferrer">chaos.vfmod.com</a></p>
   </main>
 </div>
 
-<p class="g-foot" id="g-foot">Generated from <code>Readme.md</code> by <code>build-guide.js</code>.</p>
+<footer class="sitefoot">
+  <span>© 2026 <a href="https://vfmod.com" target="_blank" rel="noopener noreferrer">Carlos Eduardo de Paula</a> · <a href="https://vfmod.com" target="_blank" rel="noopener noreferrer">Voltage Foundry Modular</a></span>
+  <span class="spacer"></span>
+  <span class="g-foot">Generated from <code>Readme.md</code> by <code>build-guide.js</code></span>
+  <a class="home" href="https://chaos.vfmod.com">chaos.vfmod.com</a>
+</footer>
 
 <script src="md.js"></script>
 <script>

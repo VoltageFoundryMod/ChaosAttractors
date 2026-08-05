@@ -36,10 +36,10 @@ is the project's only build step and has no dependencies.
 no shell and no write access to disk, on any protocol — so what it does instead
 depends on how the page was opened:
 
-| Opened as | What Refresh does |
-| --- | --- |
-| `http://` (any local server) | fetches `Readme.md` and re-renders immediately |
-| `file://` | `fetch` is blocked by the opaque origin, so it opens a file picker — choose `Readme.md` |
+| Opened as                    | What Refresh does                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `http://` (any local server) | fetches `Readme.md` and re-renders immediately                                          |
+| `file://`                    | `fetch` is blocked by the opaque origin, so it opens a file picker — choose `Readme.md` |
 
 You can also **drag a `.md` file onto the page** at any time, which works in both
 cases. Both routes use the same converter as the build, `md.js`, so the result
@@ -54,13 +54,7 @@ the scripts parse, regenerates `guide.html` from this file, and publishes — so
 the deployed reference is never stale, and it warns in the run log if the
 committed copy had drifted.
 
-One manual step is needed first, once: **Settings → Pages → Build and deployment
-→ Source → "GitHub Actions"**. Without it the workflow runs but nothing is
-served.
-
-Nothing in the site uses absolute paths, so it works unchanged from a project
-sub-path such as `https://<user>.github.io/<repo>/`. Served over http the
-reference page's Refresh button works with no file picker.
+The published site is **[chaos.vfmod.com](https://chaos.vfmod.com)**.
 
 ---
 
@@ -583,3 +577,9 @@ In **analog synthesis**, Thomas, Rössler and Chua are popular patch targets:
 routed into a modular synth they make LFOs and control voltages that evolve
 forever without repeating — bounded, structured, and never the same twice, which
 is a difficult thing to get from a noise source or a sequencer.
+
+---
+
+© 2026 [Carlos Eduardo de Paula](https://vfmod.com) ·
+[Voltage Foundry Modular](https://vfmod.com) ·
+[chaos.vfmod.com](https://chaos.vfmod.com)

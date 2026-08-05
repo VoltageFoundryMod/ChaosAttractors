@@ -66,6 +66,10 @@ jobs:
           cp index.html guide.html styles.css app.js attractors.js md.js Readme.md _site/
           # Belt and braces — stop Pages from ever running the files through Jekyll.
           touch _site/.nojekyll
+          # The custom domain. With artifact-based deploys nothing in the repo
+          # carries it, so without this file every deploy would fall back to the
+          # github.io address. Must match Settings → Pages → Custom domain.
+          echo 'chaos.vfmod.com' > _site/CNAME
 
       - uses: actions/upload-pages-artifact@v3
         with:

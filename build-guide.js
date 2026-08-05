@@ -37,6 +37,7 @@ const page = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference — Strange Attractors</title>
 <meta name="description" content="Study guide to deterministic chaos: what strange attractors are, how to read Lyapunov diagnostics, and a catalogue of fifteen systems.">
+<link rel="canonical" href="https://chaos.vfmod.com/guide.html">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🦋</text></svg>">
 </head>
@@ -65,7 +66,12 @@ ${html}
   </main>
 </div>
 
-<p class="g-foot" id="g-foot">Generated from <code>Readme.md</code> by <code>build-guide.js</code>.</p>
+<footer class="sitefoot">
+  <span>© 2026 <a href="https://vfmod.com" target="_blank" rel="noopener noreferrer">Carlos Eduardo de Paula</a> · <a href="https://vfmod.com" target="_blank" rel="noopener noreferrer">Voltage Foundry Modular</a></span>
+  <span class="spacer"></span>
+  <span class="g-foot">Generated from <code>Readme.md</code> by <code>build-guide.js</code></span>
+  <a class="home" href="https://chaos.vfmod.com">chaos.vfmod.com</a>
+</footer>
 
 <script src="md.js"></script>
 <script>
