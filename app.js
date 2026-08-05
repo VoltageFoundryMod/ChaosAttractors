@@ -847,13 +847,17 @@ function fmtExp(v) {
   const e = v.toExponential(1).replace("e", "e").replace("+", "");
   return e.replace("-", "−");
 }
+function fmtSigned(v, dec = 2) {
+  const s = Math.abs(v).toFixed(dec);
+  return (v >= 0 ? "+" : "−") + s.padStart(dec + 4, " ");
+}
 
 let statTick = 0;
 function updateStats() {
   const s = sim.runners[0].s;
   $("#s-time").innerHTML = sim.t.toFixed(1) + '<span class="unit"> t</span>';
   $("#s-pos").textContent =
-    `${s[0].toFixed(2)} ${s[1].toFixed(2)} ${s[2].toFixed(2)}`;
+    `${fmtSigned(s[0], 2)} ${fmtSigned(s[1], 2)} ${fmtSigned(s[2], 2)}`;
 
   const L = sim.lyap.val;
   const box = $("#s-lyap-box");

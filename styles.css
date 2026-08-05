@@ -311,17 +311,18 @@ select.btn {
 /* ------------------------------------------------------------- diagnostics */
 
 .stats {
-  display: flex;
+  display: grid;
   gap: 6px;
-  flex-wrap: wrap;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 .stat {
-  flex: 1 1 auto;
-  min-width: 104px;
   padding: 6px 9px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-s);
   background: var(--panel);
+}
+.stat--pos {
+  grid-column: auto;
 }
 .stat dt {
   font-size: 10.5px;
@@ -329,22 +330,98 @@ select.btn {
   text-transform: uppercase;
   color: var(--ink-muted);
 }
+.stat-tip {
+  position: relative;
+  cursor: help;
+}
+.stat-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: min(42ch, 62vw);
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink-2);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.35;
+  font-size: 11.5px;
+  font-family: var(--sans);
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(2px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  pointer-events: none;
+  z-index: 8;
+}
+.stat-tip::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  bottom: calc(100% + 2px);
+  border: 6px solid transparent;
+  border-top-color: var(--line);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 7;
+}
+.stat-tip:hover::after,
+.stat-tip:hover::before,
+.stat-tip:focus-visible::after,
+.stat-tip:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+}
+.stat-tip:hover::after,
+.stat-tip:focus-visible::after {
+  transform: translateY(0);
+}
 .stat dd {
   margin: 1px 0 0;
   font-family: var(--mono);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
+  display: inline-block;
+  min-width: 0;
 }
 .stat dd .unit {
   font-size: 11px;
   color: var(--ink-muted);
+}
+#s-pos {
+  white-space: pre;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+  font-size: 12px;
 }
 .stat.is-chaotic dd {
   color: var(--series-3);
 }
 .stat.is-ordered dd {
   color: var(--ink-2);
+}
+
+@media (max-width: 1180px) {
+  .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ---------------------------------------------------------------- inset plot */
