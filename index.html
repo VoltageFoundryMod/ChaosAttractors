@@ -2,16 +2,6 @@
 <html lang="en" data-theme="dark">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-K73PMH1KCZ"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-
-    gtag('config', 'G-K73PMH1KCZ');
-  </script>
-
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Strange Attractors — an interactive study guide</title>
@@ -21,6 +11,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🦋</text></svg>">
+  <script src="analytics.js" defer></script>
 </head>
 
 <body>
@@ -30,7 +21,10 @@
     <span class="sub">deterministic equations · unpredictable orbits · integrated live</span>
     <span class="spacer"></span>
     <!-- named target so repeat clicks reuse one tab and never lose the running sim -->
-    <a class="btn" href="guide.html" target="attractors-guide" title="The full study guide">📖 Reference</a>
+    <!-- data-file: the extensionless URL needs a server to resolve it, so app.js
+         swaps in the filename when the page was opened from disk -->
+    <a class="btn" href="guide" data-file="guide.html" target="attractors-guide" title="The full study guide">📖
+      Reference</a>
     <button class="btn" id="btn-help" title="Keyboard shortcuts and notes">? Help</button>
     <button class="btn" id="btn-theme" title="Toggle light / dark">◐ Theme</button>
   </header>
@@ -173,6 +167,27 @@
         <div class="preset-list" id="presets"></div>
       </section>
 
+      <!-- the custom system only: systems you have saved in this browser -->
+      <section class="block" id="library-block" hidden>
+        <h3>Saved systems</h3>
+        <div class="lib-list" id="lib-list"></div>
+        <div class="lib-save">
+          <input id="lib-name" placeholder="name this system" spellcheck="false" autocomplete="off"
+            aria-label="Name for the system you are saving">
+          <button class="btn" id="btn-lib-save" title="Save the equations, parameters and dt as they are now">＋
+            Save</button>
+        </div>
+        <div class="lib-actions">
+          <button class="btn" id="btn-lib-export" title="Download every saved system as one .json file">⤓
+            Export</button>
+          <button class="btn" id="btn-lib-import" title="Load systems from a .json file">⤒ Import</button>
+        </div>
+        <!-- its own line: the editor's status is overwritten by the live verdict -->
+        <p class="lib-status" id="lib-status"></p>
+        <p class="panel-note">Export to keep them or move them to another browser — or drag a <code>.json</code> file
+          anywhere onto this page. Only import files you trust: the equations are JavaScript.</p>
+      </section>
+
       <section class="block">
         <h3>Simulation</h3>
 
@@ -202,6 +217,10 @@
         <div class="field">
           <label class="check"><input type="checkbox" id="chk-axes" checked> Axis gizmo &amp; grid</label>
         </div>
+
+        <button class="btn btn--wide" id="btn-settings-reset"
+          title="Speed, trail, colour mode, panel, ghosts and ε back to their defaults">Reset settings</button>
+        <p class="panel-note">These settings, the theme and your saved systems are kept in this browser.</p>
       </section>
 
       <section class="block">

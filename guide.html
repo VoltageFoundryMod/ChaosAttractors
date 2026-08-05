@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference — Strange Attractors</title>
 <meta name="description" content="Study guide to deterministic chaos: what strange attractors are, how to read Lyapunov diagnostics, and a catalogue of fifteen systems.">
-<link rel="canonical" href="https://chaos.vfmod.com/guide.html">
+<link rel="canonical" href="https://chaos.vfmod.com/guide">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🦋</text></svg>">
+<script src="analytics.js" defer></script>
 </head>
 <body class="g-body">
 
@@ -16,7 +17,7 @@
   <span class="sub">reference</span>
   <span class="spacer"></span>
   <button class="btn" id="btn-refresh" title="Re-render this page from Readme.md">⟳ Refresh</button>
-  <a class="btn" href="index.html">← Back to the simulator</a>
+  <a class="btn" href="./" data-file="index.html">← Back to the simulator</a>
   <button class="btn" id="btn-theme" title="Toggle light / dark">◐ Theme</button>
 </header>
 
@@ -39,11 +40,13 @@
       <a class="g-toc-item g-toc-3" href="#the-view">The view</a>
       <a class="g-toc-item g-toc-3" href="#the-lower-panel">The lower panel</a>
       <a class="g-toc-item g-toc-3" href="#keyboard">Keyboard</a>
+      <a class="g-toc-item g-toc-3" href="#what-is-remembered">What is remembered</a>
       <a class="g-toc-item g-toc-2" href="#4-the-catalogue">4. The catalogue</a>
       <a class="g-toc-item g-toc-3" href="#the-classics">The classics</a>
       <a class="g-toc-item g-toc-3" href="#the-wider-zoo">The wider zoo</a>
       <a class="g-toc-item g-toc-3" href="#minimal-and-unusual">Minimal and unusual</a>
       <a class="g-toc-item g-toc-2" href="#5-the-playground">5. The playground</a>
+      <a class="g-toc-item g-toc-3" href="#keeping-what-you-find">Keeping what you find</a>
       <a class="g-toc-item g-toc-2" href="#6-a-suggested-path">6. A suggested path</a>
       <a class="g-toc-item g-toc-2" href="#7-how-it-works">7. How it works</a>
       <a class="g-toc-item g-toc-3" href="#honest-numerics">Honest numerics</a>
@@ -65,6 +68,7 @@ app.js          integrator, camera, renderer, diagnostics
 guide.html      this document, rendered as a reference page
 build-guide.js  regenerates guide.html from Readme.md
 md.js           the Markdown converter, shared by the build and the page
+analytics.js    the visitor-count tag, on both pages, off outside the live site
 
 .github/workflows/pages.yml   publishes the site to GitHub Pages</code></pre>
 <p>The <strong>📖 Reference</strong> button in the simulator opens <code>guide.html</code> — this file with a contents sidebar, in the same theme, in its own tab so the simulation keeps running. Each attractor's info panel also links to the section of §4 that covers it.</p>
@@ -74,10 +78,7 @@ md.js           the Markdown converter, shared by the build and the page
 <p>You can also <strong>drag a <code>.md</code> file onto the page</strong> at any time, which works in both cases. Both routes use the same converter as the build, <code>md.js</code>, so the result is identical to what the script would produce.</p>
 <p>The re-render lives in that tab only; nothing is written. When you are happy with it, run <code>node build-guide.js</code> to update the committed page.</p>
 <p><strong>Publishing.</strong> <code>.github/workflows/pages.yml</code> deploys the site to GitHub Pages on every push to <code>main</code>, and can be run by hand from the Actions tab. It checks that the scripts parse, regenerates <code>guide.html</code> from this file, and publishes — so the deployed reference is never stale, and it warns in the run log if the committed copy had drifted.</p>
-<p>The published site is <strong><a href="https://chaos.vfmod.com" target="_blank" rel="noopener noreferrer">chaos.vfmod.com</a></strong>. Two manual steps are needed once, in the repository settings:</p>
-<ol><li><strong>Settings → Pages → Build and deployment → Source → &quot;GitHub Actions&quot;.</strong> Without it the workflow runs but nothing is served.</li><li><strong>Settings → Pages → Custom domain → <code>chaos.vfmod.com</code></strong>, with a DNS <code>CNAME</code> record pointing <code>chaos</code> at <code>&lt;user&gt;.github.io</code>.</li></ol>
-<p>The workflow also writes a <code>CNAME</code> file into the artifact. That is not redundant: with artifact-based deploys nothing in the repository itself carries the domain, so without it a deploy can fall back to the <code>github.io</code> address.</p>
-<p>Nothing in the site uses absolute paths, so it works unchanged from a custom domain, a project sub-path such as <code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code>, or a local folder. Served over http the reference page's Refresh button works with no file picker.</p>
+<p>The published site is <strong><a href="https://chaos.vfmod.com" target="_blank" rel="noopener noreferrer">chaos.vfmod.com</a></strong>, and it is served without file extensions — <code>/</code> and <code>/guide</code>, since GitHub Pages resolves those to the two HTML files on its own. Opened from disk there is no server to do that, so the links carry a <code>data-file</code> fallback that the page swaps in when it sees a <code>file://</code> address. Anything new that the site needs has to be added to the <code>cp</code> line in the workflow, or it will be missing from the deploy.</p>
 <hr>
 <h2 id="1-what-a-strange-attractor-is"><a class="g-anchor" href="#1-what-a-strange-attractor-is">1. What a strange attractor is</a></h2>
 <p>Take a system whose future is completely determined by its present — three coupled differential equations, no randomness anywhere. Start it somewhere and let it run. Three things can happen:</p>
@@ -124,7 +125,10 @@ md.js           the Markdown converter, shared by the build and the page
 <ul><li><strong>x, y, z vs time</strong> — the same orbit unrolled. Three separate strips with three independent scales, because the variables have different ranges and stacking them on one axis would be a lie. This is what an experimentalist would actually have recorded.</li><li><strong>divergence of nearby starts</strong> — log separation vs time, with the measured λ₁ slope drawn alongside and the saturation ceiling marked. Needs at least one ghost trajectory; it turns one on for you.</li><li><strong>Poincaré section</strong> — instead of watching the whole flow, record only where it pierces a chosen plane. A continuous 3-D flow collapses to a discrete 2-D map, and the fractal cross-section becomes directly visible: for Rössler the crossings fall on what is very nearly a curve, and that curve is essentially the logistic map in disguise.</li></ul>
 <h3 id="keyboard"><a class="g-anchor" href="#keyboard">Keyboard</a></h3>
 <div class="g-tablewrap"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Space</code></td><td>pause / resume</td></tr><tr><td><code>R</code> · <code>C</code></td><td>reset the orbit · clear the trail</td></tr><tr><td><code>1</code> <code>2</code> <code>3</code> <code>4</code></td><td>XZ · XY · YZ · ISO</td></tr><tr><td><code>←</code> <code>→</code> <code>↑</code> <code>↓</code></td><td>rotate</td></tr><tr><td><code>+</code> <code>−</code></td><td>zoom</td></tr><tr><td><code>F</code> · <code>S</code></td><td>fit the view · toggle spin</td></tr><tr><td><code>[</code> <code>]</code></td><td>previous / next attractor</td></tr><tr><td><code>G</code></td><td>add / remove a ghost trajectory</td></tr></tbody></table></div>
-<p>Each attractor has its own URL: <code>index.html#aizawa</code>.</p>
+<p>Each attractor has its own URL: <a href="https://chaos.vfmod.com/#aizawa" target="_blank" rel="noopener noreferrer">chaos.vfmod.com/#aizawa</a>, or <code>index.html#aizawa</code> on disk.</p>
+<h3 id="what-is-remembered"><a class="g-anchor" href="#what-is-remembered">What is remembered</a></h3>
+<p>The simulation settings — speed, trail length, line weight, glow, auto-fit, the gizmo, the colour mode, the lower panel, ghosts and ε — are stored in this browser and come back on your next visit, along with the theme. <strong>Reset settings</strong> in the Simulation panel puts them all back.</p>
+<p>Parameter values are deliberately <em>not</em> remembered. Every attractor opens at its published values, because a slider you nudged last week quietly changing what Lorenz looks like today would make every number in this guide a lie. Within a session, <strong>Restore published values</strong> does the same job for one system.</p>
 <hr>
 <h2 id="4-the-catalogue"><a class="g-anchor" href="#4-the-catalogue">4. The catalogue</a></h2>
 <p>λ₁ below was measured by integrating each system at its default parameters for the time span shown, using the same RK4 core the browser runs. The published values, where they exist, agree — Sprott's own tabulated exponents for cases B and C are 0.210 and 0.163.</p>
@@ -171,7 +175,11 @@ Chua        ẋ = α(y − x − h(x))   α = 15.6, β = 28
 settled onto a fixed point — the orbit has stopped moving
 escaping to infinity — try a smaller dt, or smaller parameters</code></pre>
 <p>Write the right-hand sides in JavaScript. <code>x</code>, <code>y</code> and <code>z</code> are the state; <strong>any other name becomes a parameter and gets its own slider automatically</strong>, so <code>a * (y - x)</code> produces an <code>a</code> you can drag. <code>sin</code>, <code>cos</code>, <code>exp</code>, <code>sqrt</code>, <code>abs</code>, <code>**</code> and the rest of <code>Math</code> are available unprefixed, and pasted <code>−</code>, <code>×</code>, <code>·</code>, <code>²</code>, <code>³</code> and <code>^</code> are converted for you. Parameter values are typeable as well as draggable, since a slider range for an unknown system is only a guess — type a value outside it and the range widens.</p>
-<p>Below the equations are <code>x₀ y₀ z₀</code> and <code>dt</code>. <strong>The <code>dt</code> box matters more than it looks.</strong> A system that flies off to infinity may be genuinely unbounded, or may just be outrunning the integrator; halving <code>dt</code> distinguishes the two. Your work is kept in <code>localStorage</code>, so it survives a reload.</p>
+<p>Below the equations are <code>x₀ y₀ z₀</code> and <code>dt</code>. <strong>The <code>dt</code> box matters more than it looks.</strong> A system that flies off to infinity may be genuinely unbounded, or may just be outrunning the integrator; halving <code>dt</code> distinguishes the two. Whatever is in the editor survives a reload on its own — but only the one you were last working on, which is what <strong>Saved systems</strong> is for.</p>
+<h3 id="keeping-what-you-find"><a class="g-anchor" href="#keeping-what-you-find">Keeping what you find</a></h3>
+<p><strong>Save</strong> stores the equations, the parameters and their ranges, the initial condition and <code>dt</code> under a name; saving again under the same name replaces it. Click a saved system to load it, <code>✕</code> to delete it. They live in this browser, which means a cleared cache or a different machine does not have them — so:</p>
+<ul><li><strong>Export</strong> writes every saved system to one <code>.json</code> file.</li><li><strong>Import</strong>, or dragging a <code>.json</code> anywhere onto the page, reads one back. Files from anywhere are accepted: our own export, a bare array of systems, or a single system on its own.</li></ul>
+<p>Every imported system is compiled and test-fired before it is accepted, and anything that fails is skipped with the reason — a file that is half-wrong imports the half that works rather than breaking the editor. One caution follows from the design of the playground: <strong>the equations are JavaScript</strong>, so import files from people you trust, exactly as you would a script.</p>
 <p>The <strong>Start from</strong> buttons load a seed you can mutate, which is where the real learning is. Load Lorenz, change <code>x * y</code> to <code>x * x</code> in the ż equation, and you get a completely different chaotic attractor with λ₁ = +0.35. Delete a term and it usually collapses.</p>
 <p>That collapse is the honest base rate, and it is worth internalising: <strong>most things you type are not chaotic.</strong> They decay to a point or explode. This is exactly why Sprott had to search millions of candidate systems by computer to find his nineteen — and it makes the fact that Lorenz stumbled onto one while modelling the weather look much less inevitable than it does in retrospect.</p>
 <p>Two rules of thumb for hunting: chaos needs <strong>at least three dimensions</strong> and <strong>at least one nonlinear term</strong> (a purely linear system can only decay, explode, or oscillate). Those are necessary, nowhere near sufficient, and the rest is searching.</p>
@@ -231,6 +239,14 @@ escaping to infinity — try a smaller dt, or smaller parameters</code></pre>
 <script>
 (function () {
   'use strict';
+
+  /* the site is served without .html extensions; opened from disk there is no
+     server to resolve them, so the filenames come back */
+  if (location.protocol === 'file:') {
+    document.querySelectorAll('a[data-file]').forEach(function (a) {
+      a.setAttribute('href', a.dataset.file);
+    });
+  }
 
   /* theme — same storage key as the simulator, so the two always agree */
   var saved = localStorage.getItem('attractors-theme');

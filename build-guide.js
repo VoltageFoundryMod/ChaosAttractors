@@ -37,9 +37,10 @@ const page = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference — Strange Attractors</title>
 <meta name="description" content="Study guide to deterministic chaos: what strange attractors are, how to read Lyapunov diagnostics, and a catalogue of fifteen systems.">
-<link rel="canonical" href="https://chaos.vfmod.com/guide.html">
+<link rel="canonical" href="https://chaos.vfmod.com/guide">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🦋</text></svg>">
+<script src="analytics.js" defer></script>
 </head>
 <body class="g-body">
 
@@ -48,7 +49,7 @@ const page = `<!DOCTYPE html>
   <span class="sub">reference</span>
   <span class="spacer"></span>
   <button class="btn" id="btn-refresh" title="Re-render this page from Readme.md">⟳ Refresh</button>
-  <a class="btn" href="index.html">← Back to the simulator</a>
+  <a class="btn" href="./" data-file="index.html">← Back to the simulator</a>
   <button class="btn" id="btn-theme" title="Toggle light / dark">◐ Theme</button>
 </header>
 
@@ -77,6 +78,14 @@ ${html}
 <script>
 (function () {
   'use strict';
+
+  /* the site is served without .html extensions; opened from disk there is no
+     server to resolve them, so the filenames come back */
+  if (location.protocol === 'file:') {
+    document.querySelectorAll('a[data-file]').forEach(function (a) {
+      a.setAttribute('href', a.dataset.file);
+    });
+  }
 
   /* theme — same storage key as the simulator, so the two always agree */
   var saved = localStorage.getItem('attractors-theme');

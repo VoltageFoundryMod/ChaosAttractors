@@ -16,6 +16,7 @@ app.js          integrator, camera, renderer, diagnostics
 guide.html      this document, rendered as a reference page
 build-guide.js  regenerates guide.html from Readme.md
 md.js           the Markdown converter, shared by the build and the page
+analytics.js    the visitor-count tag, on both pages, off outside the live site
 
 .github/workflows/pages.yml   publishes the site to GitHub Pages
 ```
@@ -54,7 +55,12 @@ the scripts parse, regenerates `guide.html` from this file, and publishes — so
 the deployed reference is never stale, and it warns in the run log if the
 committed copy had drifted.
 
-The published site is **[chaos.vfmod.com](https://chaos.vfmod.com)**.
+The published site is **[chaos.vfmod.com](https://chaos.vfmod.com)**, and it is
+served without file extensions — `/` and `/guide`, since GitHub Pages resolves
+those to the two HTML files on its own. Opened from disk there is no server to
+do that, so the links carry a `data-file` fallback that the page swaps in when
+it sees a `file://` address. Anything new that the site needs has to be added to
+the `cp` line in the workflow, or it will be missing from the deploy.
 
 ---
 
@@ -234,7 +240,21 @@ races — try it on Aizawa) or **depth** (distance from the camera).
 | `[` `]`         | previous / next attractor         |
 | `G`             | add / remove a ghost trajectory   |
 
-Each attractor has its own URL: `index.html#aizawa`.
+Each attractor has its own URL: [chaos.vfmod.com/#aizawa](https://chaos.vfmod.com/#aizawa), or
+`index.html#aizawa` on disk.
+
+### What is remembered
+
+The simulation settings — speed, trail length, line weight, glow, auto-fit,
+the gizmo, the colour mode, the lower panel, ghosts and ε — are stored in this
+browser and come back on your next visit, along with the theme. **Reset
+settings** in the Simulation panel puts them all back.
+
+Parameter values are deliberately _not_ remembered. Every attractor opens at
+its published values, because a slider you nudged last week quietly changing
+what Lorenz looks like today would make every number in this guide a lie.
+Within a session, **Restore published values** does the same job for one
+system.
 
 ---
 
@@ -394,8 +414,28 @@ value outside it and the range widens.
 
 Below the equations are `x₀ y₀ z₀` and `dt`. **The `dt` box matters more than it
 looks.** A system that flies off to infinity may be genuinely unbounded, or may
-just be outrunning the integrator; halving `dt` distinguishes the two. Your work
-is kept in `localStorage`, so it survives a reload.
+just be outrunning the integrator; halving `dt` distinguishes the two. Whatever
+is in the editor survives a reload on its own — but only the one you were last
+working on, which is what **Saved systems** is for.
+
+### Keeping what you find
+
+**Save** stores the equations, the parameters and their ranges, the initial
+condition and `dt` under a name; saving again under the same name replaces it.
+Click a saved system to load it, `✕` to delete it. They live in this browser,
+which means a cleared cache or a different machine does not have them —
+so:
+
+- **Export** writes every saved system to one `.json` file.
+- **Import**, or dragging a `.json` anywhere onto the page, reads one back.
+  Files from anywhere are accepted: our own export, a bare array of systems, or
+  a single system on its own.
+
+Every imported system is compiled and test-fired before it is accepted, and
+anything that fails is skipped with the reason — a file that is half-wrong
+imports the half that works rather than breaking the editor. One caution
+follows from the design of the playground: **the equations are JavaScript**, so
+import files from people you trust, exactly as you would a script.
 
 The **Start from** buttons load a seed you can mutate, which is where the real
 learning is. Load Lorenz, change `x * y` to `x * x` in the ż equation, and you

@@ -43,7 +43,7 @@ jobs:
       # it costs a second to rule out before publishing.
       - name: Check the scripts parse
         run: |
-          for f in app.js attractors.js md.js build-guide.js; do
+          for f in app.js attractors.js md.js build-guide.js analytics.js; do
             node --check "$f"
           done
 
@@ -63,7 +63,7 @@ jobs:
           mkdir -p _site
           # Readme.md ships too: the reference page's Refresh button fetches it
           # to re-render itself in the browser.
-          cp index.html guide.html styles.css app.js attractors.js md.js Readme.md _site/
+          cp index.html guide.html styles.css app.js attractors.js md.js analytics.js Readme.md _site/
           # Belt and braces — stop Pages from ever running the files through Jekyll.
           touch _site/.nojekyll
           # The custom domain. With artifact-based deploys nothing in the repo

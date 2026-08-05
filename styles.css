@@ -587,13 +587,22 @@ select.btn {
   font-size: 11.5px;
 }
 
-.eq-help {
-  margin: 10px 0 0 37px;
+/* .eq-help lines up under the equation fields; .panel-note is the same note
+   without the editor's label gutter, for panels that have no such gutter */
+.eq-help,
+.panel-note {
   font-size: 11px;
   line-height: 1.6;
   color: var(--ink-muted);
 }
+.eq-help {
+  margin: 10px 0 0 37px;
+}
+.panel-note {
+  margin: 8px 0 0;
+}
 .eq-help code,
+.panel-note code,
 .prose code {
   padding: 0 3px;
   border-radius: 3px;
@@ -678,6 +687,106 @@ select.btn {
   font-size: 11.5px;
   color: var(--ink-muted);
   line-height: 1.4;
+}
+
+/* ------------------------------------------------------- the saved library */
+
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lib-item {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.lib-load {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 6px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-s);
+  background: var(--panel-2);
+  cursor: pointer;
+}
+.lib-load:hover {
+  border-color: var(--ink-muted);
+}
+.lib-load .pn {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+/* the equations are the useful label — one line of them, however long they are */
+.lib-load .pd {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+.lib-del {
+  flex: none;
+  width: 26px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-s);
+  background: var(--panel-2);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.lib-del:hover {
+  border-color: #e66767;
+  color: #e66767;
+}
+
+.lib-save {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.lib-save input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--panel-2);
+  color: var(--ink);
+  font-size: 12px;
+}
+.lib-save input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.lib-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.lib-actions .btn {
+  flex: 1;
+}
+
+.lib-status {
+  margin: 8px 0 0;
+  min-height: 15px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+.lib-status.is-ok {
+  color: var(--series-3);
+}
+.lib-status.is-warn {
+  color: var(--series-4);
+}
+.lib-status.is-bad {
+  color: #e66767;
 }
 
 .field {

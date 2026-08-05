@@ -70,6 +70,19 @@ const ui = {
   sectionAxis: 2,
 };
 
+/* what "Reset settings" restores, and the shape restoreSettings() validates
+   a stored entry against — so it has to be taken before anything is loaded */
+const UI_DEFAULTS = Object.freeze({ ...ui });
+
+/*
+ * The site is served without .html extensions — GitHub Pages resolves /guide
+ * to guide.html on its own — so that is what the canonical URLs and the
+ * analytics reports use. Opened from disk there is no server to do the
+ * resolving, and the filenames have to come back.
+ */
+const localFile = location.protocol === "file:";
+const guideUrl = (hash = "") => (localFile ? "guide.html" : "guide") + hash;
+
 const sim = {
   id: null,
   cfg: null,
@@ -1166,46 +1179,96 @@ function applyEditor(restart) {
   return true;
 }
 
-function loadSeed(seed) {
+/**
+ * A slider range for an unknown parameter is only ever a guess — buildParams
+ * widens it as soon as a value outside it is typed.
+ */
+function paramSpec(k, v) {
+  const mag = Math.max(1, Math.abs(v) * 2.5);
+  return { v, min: v >= 0 ? 0 : -mag, max: mag, step: mag / 1000, label: k };
+}
+
+/**
+ * Put a stored system into the editor and run it. One shape for all three
+ * sources — the built-in seeds, the working draft, and the saved library —
+ * because a system that came from a file has to be treated as suspect, and
+ * doing that in one place is the only way to be sure it always happens.
+ *
+ * applyEditor() re-reads the fields and recompiles, so the inputs are the
+ * source of truth; cfg is only seeded here for the values it does not own.
+ */
+function loadSystem(sys, reframe) {
   const cfg = ATTRACTORS.custom;
+  const values = sys.values || {};
+
   cfg.params = {};
-  for (const [k, v] of Object.entries(seed.params)) {
-    const mag = Math.max(1, Math.abs(v) * 2.5);
-    cfg.params[k] = {
-      v,
-      min: v >= 0 ? 0 : -mag,
-      max: mag,
-      step: mag / 1000,
-      label: k,
-    };
+  for (const [k, spec] of Object.entries(sys.params || {})) {
+    const v = Number.isFinite(values[k])
+      ? values[k]
+      : Number.isFinite(spec?.v)
+        ? spec.v
+        : 1;
+    const usable =
+      spec &&
+      Number.isFinite(spec.min) &&
+      Number.isFinite(spec.max) &&
+      spec.step > 0 &&
+      spec.min < spec.max;
+    cfg.params[k] = usable
+      ? { ...spec, v, label: String(spec.label || k) }
+      : paramSpec(k, v);
   }
-  sim.p = { ...seed.params };
-  $("#eq-x").value = seed.eq[0];
-  $("#eq-y").value = seed.eq[1];
-  $("#eq-z").value = seed.eq[2];
-  $("#eq-dt").value = seed.dt;
-  ["x0", "y0", "z0"].forEach((id, i) => ($("#eq-" + id).value = seed.init[i]));
-  cfg.init = [...seed.init];
-  cfg.dt = seed.dt;
-  cfg.view = { ...cfg.view, center: [0, 0, 0], radius: 10 };
-  sim.fit.c = [0, 0, 0];
-  sim.fit.r = 10;
+  sim.p = {};
+  for (const k of Object.keys(cfg.params)) sim.p[k] = cfg.params[k].v;
+
+  ["x", "y", "z"].forEach((ax, i) => ($("#eq-" + ax).value = sys.eq[i]));
+  const dt = Number(sys.dt);
+  cfg.dt = Number.isFinite(dt) && dt > 0 ? Math.min(0.2, dt) : cfg.dt;
+  $("#eq-dt").value = cfg.dt;
+  cfg.init = ["x0", "y0", "z0"].map((_, i) =>
+    Number.isFinite(sys.init?.[i]) ? sys.init[i] : cfg.init[i],
+  );
+  ["x0", "y0", "z0"].forEach((id, i) => ($("#eq-" + id).value = cfg.init[i]));
+
+  if (reframe) {
+    cfg.view = { ...cfg.view, center: [0, 0, 0], radius: 10 };
+    sim.fit.c = [0, 0, 0];
+    sim.fit.r = 10;
+  }
   applyEditor(true);
 }
 
-function saveCustom() {
+function loadSeed(seed) {
+  loadSystem(
+    {
+      eq: seed.eq,
+      init: seed.init,
+      dt: seed.dt,
+      values: seed.params,
+      params: Object.fromEntries(
+        Object.entries(seed.params).map(([k, v]) => [k, paramSpec(k, v)]),
+      ),
+    },
+    true,
+  );
+}
+
+/** The editor exactly as it stands — the draft, and what "Save" stores. */
+function currentSystem(name) {
   const cfg = ATTRACTORS.custom;
+  return {
+    name,
+    eq: [$("#eq-x").value, $("#eq-y").value, $("#eq-z").value],
+    params: cfg.params,
+    values: sim.p,
+    init: cfg.init,
+    dt: cfg.dt,
+  };
+}
+
+function saveCustom() {
   try {
-    localStorage.setItem(
-      "attractors-custom",
-      JSON.stringify({
-        eq: [$("#eq-x").value, $("#eq-y").value, $("#eq-z").value],
-        params: cfg.params,
-        values: sim.p,
-        init: cfg.init,
-        dt: cfg.dt,
-      }),
-    );
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(currentSystem()));
   } catch (e) {
     /* private mode, quota — the editor still works, it just will not persist */
   }
@@ -1215,23 +1278,14 @@ function restoreCustom() {
   const cfg = ATTRACTORS.custom;
   let saved = null;
   try {
-    saved = JSON.parse(localStorage.getItem("attractors-custom"));
+    saved = JSON.parse(localStorage.getItem(DRAFT_KEY));
   } catch (e) { /* corrupt entry — fall through to the default seed */ }
 
-  if (!saved?.eq) {
+  if (!Array.isArray(saved?.eq) || saved.eq.length !== 3) {
     loadSeed(cfg.seeds[0]);
     return;
   }
-  cfg.params = saved.params || {};
-  cfg.init = saved.init || cfg.init;
-  cfg.dt = saved.dt || cfg.dt;
-  sim.p = { ...saved.values };
-  $("#eq-x").value = saved.eq[0];
-  $("#eq-y").value = saved.eq[1];
-  $("#eq-z").value = saved.eq[2];
-  $("#eq-dt").value = cfg.dt;
-  ["x0", "y0", "z0"].forEach((id, i) => ($("#eq-" + id).value = cfg.init[i]));
-  applyEditor(true);
+  loadSystem(saved, false);
 }
 
 let editorTimer = null;
@@ -1315,6 +1369,358 @@ function renderLegend() {
   el.innerHTML = html;
 }
 
+/* §8c -------------------------------------------------- what is remembered
+
+   Four localStorage keys, every one optional: a browser that refuses to store
+   anything still runs the simulator, it just forgets between visits.
+
+     attractors-theme      dark / light — shared with guide.html
+     attractors-settings   the preference half of `ui`
+     attractors-custom     the editor's working draft
+     attractors-library    systems you have saved by name
+
+   Parameter values are deliberately *not* remembered. An attractor opens at
+   its published values every time, which is what "Restore published values"
+   promises and what every number quoted in the reference assumes; a slider you
+   nudged last week silently changing what Lorenz looks like today would make
+   the whole instrument untrustworthy.
+   ========================================================================== */
+
+const DRAFT_KEY = "attractors-custom",
+  SETTINGS_KEY = "attractors-settings",
+  LIBRARY_KEY = "attractors-library";
+
+/* the preferences, with the bounds a stored value has to fall inside. Anything
+   else in `ui` is running state and is rebuilt on load. */
+const SETTINGS = {
+  speed: [0.1, 4],
+  trailCap: [1000, 60000],
+  width: [0.4, 3],
+  ghosts: [0, 3],
+  epsExp: [-12, -1],
+  glow: [],
+  autofit: [],
+  axes: [],
+  colorMode: ["age", "speed", "depth"],
+  insetMode: ["timeseries", "separation", "poincare", "none"],
+};
+
+function saveSettings() {
+  try {
+    const out = {};
+    for (const k of Object.keys(SETTINGS)) out[k] = ui[k];
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(out));
+  } catch (e) {
+    /* private mode, quota — the session still works, it just will not persist */
+  }
+}
+
+/**
+ * Load the stored preferences into `ui`. Every value is checked against the
+ * default's type and the control's own range: this runs before the UI is
+ * bound, so a stale key from an older version — or a hand-edited one — must
+ * not be able to take the boot down with it.
+ */
+function restoreSettings() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+  } catch (e) { /* corrupt entry — the defaults stand */ }
+  if (!saved || typeof saved !== "object") return;
+
+  for (const [k, allowed] of Object.entries(SETTINGS)) {
+    const v = saved[k];
+    if (typeof v !== typeof UI_DEFAULTS[k]) continue;
+    if (typeof v === "number") {
+      if (!Number.isFinite(v) || v < allowed[0] || v > allowed[1]) continue;
+    } else if (typeof v === "string" && !allowed.includes(v)) continue;
+    ui[k] = v;
+  }
+}
+
+/** Push `ui` out to the controls. The ranges' own handlers apply the effects. */
+function applySettingsToControls() {
+  $("#rng-speed").value = ui.speed;
+  $("#rng-trail").value = ui.trailCap;
+  $("#rng-width").value = ui.width;
+  $("#chk-glow").checked = ui.glow;
+  $("#chk-autofit").checked = ui.autofit;
+  $("#chk-axes").checked = ui.axes;
+  $("#sel-color").value = ui.colorMode;
+  $("#sel-inset").value = ui.insetMode;
+  $("#rng-ghosts").value = ui.ghosts;
+  $("#v-ghosts").textContent = String(ui.ghosts);
+  $("#rng-eps").value = ui.epsExp;
+  $("#v-eps").textContent = fmtExp(Math.pow(10, ui.epsExp));
+}
+
+function resetSettings() {
+  Object.assign(ui, UI_DEFAULTS);
+  applySettingsToControls();
+  refreshRanges(); // readouts, and the trail buffers the length slider owns
+  setGhosts(UI_DEFAULTS.ghosts);
+  $("#sel-inset").dispatchEvent(new Event("change")); // titles, notes, visibility
+  saveSettings();
+}
+
+/* ------------------------------------------------------- the saved library */
+
+function readLibrary() {
+  try {
+    const list = JSON.parse(localStorage.getItem(LIBRARY_KEY));
+    // everything written here is validated, but the store is a text file the
+    // user can edit — one bad entry must not take the whole panel down
+    return Array.isArray(list)
+      ? list.filter((s) => s && typeof s.name === "string" && Array.isArray(s.eq) && s.eq.length === 3)
+      : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function writeLibrary(list) {
+  try {
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(list));
+  } catch (e) {
+    libStatus("Could not save — this browser's storage is full or blocked.", "bad");
+  }
+  renderLibrary();
+}
+
+function libStatus(msg, kind) {
+  const el = $("#lib-status");
+  el.textContent = msg || "";
+  el.className = "lib-status" + (kind ? " is-" + kind : "");
+}
+
+function renderLibrary() {
+  const host = $("#lib-list");
+  const list = readLibrary();
+  host.innerHTML = "";
+  if (!list.length) {
+    host.innerHTML =
+      '<p class="empty-note">Nothing saved yet. Get something you like on screen, name it, and save.</p>';
+    return;
+  }
+  list.forEach((sys, i) => {
+    const row = document.createElement("div");
+    row.className = "lib-item";
+    const load = document.createElement("button");
+    load.className = "lib-load";
+    load.innerHTML =
+      `<span class="pn">${escHtml(sys.name)}</span>` +
+      `<span class="pd">${escHtml(sys.eq.join("  ·  "))}</span>`;
+    load.onclick = () => {
+      loadSystem(sys, true);
+      libStatus(`Loaded “${sys.name}”.`, "ok");
+    };
+    const del = document.createElement("button");
+    del.className = "lib-del";
+    del.textContent = "✕";
+    del.title = `Delete “${sys.name}”`;
+    del.setAttribute("aria-label", `Delete ${sys.name}`);
+    del.onclick = () => {
+      const next = readLibrary();
+      next.splice(i, 1);
+      writeLibrary(next);
+      libStatus(`Deleted “${sys.name}”.`, null);
+    };
+    row.append(load, del);
+    host.appendChild(row);
+  });
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function uniqueName(name, list) {
+  let out = name,
+    n = 2;
+  while (list.some((s) => s.name === out)) out = `${name} (${n++})`;
+  return out;
+}
+
+function saveToLibrary() {
+  if (editorError) {
+    libStatus("Fix the equations first — this system does not compile.", "bad");
+    return;
+  }
+  const list = readLibrary();
+  const typed = $("#lib-name").value.trim();
+  const name = typed || `System ${list.length + 1}`;
+  const sys = JSON.parse(JSON.stringify(currentSystem(name)));
+
+  // saving under a name that is already taken replaces it, which is what
+  // "save" means everywhere else
+  const at = list.findIndex((s) => s.name === name);
+  if (at >= 0) list[at] = sys;
+  else list.push(sys);
+
+  writeLibrary(list);
+  $("#lib-name").value = "";
+  libStatus(at >= 0 ? `Replaced “${name}”.` : `Saved “${name}”.`, "ok");
+}
+
+/**
+ * Check an entry from a file hard enough that a bad one cannot reach the render
+ * loop: three expressions that actually compile, a usable dt, a finite start.
+ * A half-working import would be worse than one rejected with a reason.
+ */
+function normaliseSystem(entry, i) {
+  const where = `entry ${i + 1}`;
+  if (!entry || typeof entry !== "object") return { error: `${where} is not a system` };
+
+  const name = typeof entry.name === "string" && entry.name.trim()
+    ? entry.name.trim().slice(0, 60)
+    : `Imported ${i + 1}`;
+
+  const eq = entry.eq;
+  if (!Array.isArray(eq) || eq.length !== 3 || eq.some((e) => typeof e !== "string" || !e.trim()))
+    return { error: `“${name}” does not have three equations` };
+
+  const res = compileField(eq);
+  if (res.error) return { error: `“${name}”: ${res.error}` };
+
+  const dt = Number(entry.dt);
+  const values = entry.values && typeof entry.values === "object" ? entry.values : {};
+  const params = {};
+  for (const k of res.params) {
+    const v = Number.isFinite(values[k])
+      ? values[k]
+      : Number.isFinite(entry.params?.[k]?.v)
+        ? entry.params[k].v
+        : 1;
+    const spec = entry.params?.[k];
+    const usable =
+      spec && Number.isFinite(spec.min) && Number.isFinite(spec.max) && spec.step > 0 && spec.min < spec.max;
+    params[k] = usable ? { ...spec, v, label: String(spec.label || k) } : paramSpec(k, v);
+  }
+
+  return {
+    system: {
+      name,
+      eq: eq.map((e) => e.trim()),
+      params,
+      values: Object.fromEntries(res.params.map((k) => [k, params[k].v])),
+      init: [0, 1, 2].map((j) => (Number.isFinite(entry.init?.[j]) ? entry.init[j] : 0.1)),
+      dt: Number.isFinite(dt) && dt > 0 ? Math.min(0.2, dt) : 0.01,
+    },
+  };
+}
+
+function exportLibrary() {
+  const systems = readLibrary();
+  if (!systems.length) {
+    libStatus("Nothing to export yet — save a system first.", "warn");
+    return;
+  }
+  const doc = {
+    format: "strange-attractors/systems",
+    version: 1,
+    exported: new Date().toISOString(),
+    site: "https://chaos.vfmod.com",
+    systems,
+  };
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }),
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `strange-attractors-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  // Chrome cancels the download if the URL is revoked out from under it
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  libStatus(`Exported ${systems.length} system${systems.length > 1 ? "s" : ""}.`, "ok");
+}
+
+/** Accept our own export, a bare array, or a single system object. */
+function importSystems(text, origin) {
+  let doc;
+  try {
+    doc = JSON.parse(text);
+  } catch (e) {
+    showImport(`${origin} is not valid JSON.`, "bad");
+    return;
+  }
+  const raw = Array.isArray(doc)
+    ? doc
+    : Array.isArray(doc?.systems)
+      ? doc.systems
+      : doc?.eq
+        ? [doc]
+        : null;
+  if (!raw || !raw.length) {
+    showImport(`${origin} has no systems in it.`, "bad");
+    return;
+  }
+
+  const list = readLibrary();
+  const rejected = [];
+  let added = 0;
+  raw.forEach((entry, i) => {
+    const res = normaliseSystem(entry, i);
+    if (res.error) {
+      rejected.push(res.error);
+      return;
+    }
+    res.system.name = uniqueName(res.system.name, list);
+    list.push(res.system);
+    added++;
+  });
+  if (added) writeLibrary(list);
+
+  const parts = [];
+  if (added) parts.push(`Imported ${added} system${added > 1 ? "s" : ""} from ${origin}.`);
+  if (rejected.length) parts.push(`Skipped ${rejected.length}: ${rejected[0]}`);
+  showImport(parts.join(" "), added ? (rejected.length ? "warn" : "ok") : "bad");
+}
+
+/* an import can arrive by drag-and-drop from any attractor, and the message
+   about it lives in the playground panel — so go there first */
+function showImport(msg, kind) {
+  if (sim.id !== "custom") select("custom");
+  libStatus(msg, kind);
+}
+
+const libPicker = document.createElement("input");
+libPicker.type = "file";
+libPicker.accept = ".json,application/json";
+libPicker.onchange = () => {
+  const file = libPicker.files && libPicker.files[0];
+  if (file) file.text().then((t) => importSystems(t, file.name));
+  libPicker.value = "";
+};
+
+$("#btn-lib-save").onclick = saveToLibrary;
+$("#lib-name").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveToLibrary();
+});
+$("#btn-lib-export").onclick = exportLibrary;
+$("#btn-lib-import").onclick = () => libPicker.click();
+
+/* drop a .json anywhere on the page to import it */
+["dragover", "drop"].forEach((type) => {
+  document.addEventListener(type, (e) => {
+    const file = e.dataTransfer?.files?.[0];
+    if (type === "dragover") {
+      if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+      return;
+    }
+    if (!file) return;
+    e.preventDefault();
+    if (!/\.json$/i.test(file.name)) {
+      showImport(`${file.name} is not a .json export.`, "bad");
+      return;
+    }
+    file.text().then((t) => importSystems(t, file.name));
+  });
+});
+
 /* which part of guide.html covers each family (anchors from build-guide.js) */
 const GUIDE_SECTION = {
   classic: "the-classics",
@@ -1382,18 +1788,28 @@ function select(id) {
   $("#credit").hidden = !!cfg.editable;
   $("#about").innerHTML =
     `<p>${cfg.about}</p>` +
-    `<p class="guide-link"><a href="guide.html#${GUIDE_SECTION[cfg.family] || "4-the-catalogue"}" target="attractors-guide">Read more in the reference →</a></p>`;
+    `<p class="guide-link"><a href="${guideUrl("#" + (GUIDE_SECTION[cfg.family] || "4-the-catalogue"))}" target="attractors-guide">Read more in the reference →</a></p>`;
   $("#tips").innerHTML = (cfg.tips || []).map((t) => `<li>${t}</li>`).join("");
 
   buildParams();
   buildPresets();
+  $("#library-block").hidden = !cfg.editable;
   // the editor owns the custom system's field, initial state and dt
-  if (cfg.editable) restoreCustom();
+  if (cfg.editable) {
+    libStatus("", null);
+    renderLibrary();
+    restoreCustom();
+  }
   history.replaceState(null, "", "#" + id);
   document.title = `${cfg.name} — Strange Attractors`;
 }
 
 /* §9 --------------------------------------------------------------- events */
+
+/* Before anything is bound: the controls carry the stored preferences, and the
+   handlers below read their initial state straight off the controls. */
+restoreSettings();
+applySettingsToControls();
 
 function setPlaying(v) {
   ui.playing = v;
@@ -1467,6 +1883,8 @@ $("#sel-section").onchange = (e) => {
   sim.pcPrev = null;
 };
 
+/* re-runnable so "Reset settings" can push the defaults back through them */
+const rangeRuns = [];
 function bindRange(id, valId, apply, format) {
   const el = $(id);
   const run = () => {
@@ -1475,8 +1893,10 @@ function bindRange(id, valId, apply, format) {
     apply(v);
   };
   el.addEventListener("input", run);
+  rangeRuns.push(run);
   run();
 }
+const refreshRanges = () => rangeRuns.forEach((run) => run());
 
 bindRange(
   "#rng-speed",
@@ -1505,6 +1925,7 @@ function setGhosts(n) {
   $("#rng-ghosts").value = n;
   $("#v-ghosts").textContent = String(n);
   rebuildRunners();
+  saveSettings(); // also reached by the G key and by the divergence panel
 }
 $("#rng-ghosts").addEventListener("input", (e) =>
   setGhosts(parseInt(e.target.value, 10)),
@@ -1514,11 +1935,27 @@ $("#rng-eps").addEventListener("input", (e) => {
   $("#v-eps").textContent = fmtExp(Math.pow(10, ui.epsExp));
   rebuildRunners();
 });
-$("#v-eps").textContent = fmtExp(Math.pow(10, ui.epsExp));
 
 $("#chk-glow").onchange = (e) => (ui.glow = e.target.checked);
 $("#chk-autofit").onchange = (e) => (ui.autofit = e.target.checked);
 $("#chk-axes").onchange = (e) => (ui.axes = e.target.checked);
+
+/* Settings are remembered as they are changed. "change" rather than "input":
+   a slider then stores once, on release, instead of on every pixel of a drag. */
+for (const id of [
+  "#rng-speed",
+  "#rng-trail",
+  "#rng-width",
+  "#rng-eps",
+  "#chk-glow",
+  "#chk-autofit",
+  "#chk-axes",
+  "#sel-color",
+  "#sel-inset",
+])
+  $(id).addEventListener("change", saveSettings);
+
+$("#btn-settings-reset").onclick = resetSettings;
 
 /* pointer: drag to rotate, shift-drag to pan, wheel to zoom */
 let drag = null;
@@ -1564,9 +2001,11 @@ scene.addEventListener(
       Math.min(14, sim.view.zoom * Math.exp(-e.deltaY * 0.0015)),
     );
     if (ui.autofit) {
+      // manual zoom wins
       ui.autofit = false;
       $("#chk-autofit").checked = false;
-    } // manual zoom wins
+      saveSettings(); // no change event fires when we untick it ourselves
+    }
   },
   { passive: false },
 );
@@ -1670,6 +2109,10 @@ function tick() {
 }
 
 /* boot */
+if (localFile)
+  document
+    .querySelectorAll("a[data-file]")
+    .forEach((a) => a.setAttribute("href", a.dataset.file));
 const savedTheme = localStorage.getItem("attractors-theme");
 if (savedTheme) document.documentElement.dataset.theme = savedTheme;
 readTheme();
