@@ -313,7 +313,7 @@ select.btn {
 .stats {
   display: grid;
   gap: 6px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 .stat {
   padding: 6px 9px;
@@ -321,8 +321,9 @@ select.btn {
   border-radius: var(--radius-s);
   background: var(--panel);
 }
+/* three signed coordinates need roughly twice the width of a single figure */
 .stat--pos {
-  grid-column: auto;
+  grid-column: span 2;
 }
 .stat dt {
   font-size: 10.5px;

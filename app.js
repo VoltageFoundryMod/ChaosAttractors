@@ -91,6 +91,7 @@ const sim = {
   pcPrev: null,
   prevState: new Float64Array(3),
   sep: [],
+  sepEvery: 6,
   fit: { c: [0, 0, 0], r: 1, target: null },
   view: { yaw: 0, pitch: 0, zoom: 1, panX: 0, panY: 0 },
 };
@@ -736,7 +737,10 @@ function drawSeparation(W, H) {
   if (s.length < 6) return;
   const t0 = s[0],
     t1 = s[s.length - 2];
-  const loEps = ui.epsExp - 0.5,
+  // anchor on the first measured gap, not on ε — they differ once the orbits
+  // have taken a step, and the reference line has to start from what happened
+  const l0 = Math.log10(Math.max(1e-14, s[1]));
+  const loEps = Math.min(ui.epsExp, l0) - 0.5,
     hi = Math.log10(Math.max(1e-9, sim.fit.r * 2.2));
   const x = (t) =>
     PAD.l + ((t - t0) / Math.max(1e-9, t1 - t0)) * (W - PAD.l - PAD.r);
@@ -758,9 +762,9 @@ function drawSeparation(W, H) {
     const slope = sim.lyap.val / Math.LN10;
     ictx.strokeStyle = theme.muted;
     ictx.beginPath();
-    ictx.moveTo(x(t0), y(ui.epsExp));
-    const tEnd = Math.min(t1, t0 + (hi - ui.epsExp) / slope);
-    ictx.lineTo(x(tEnd), y(ui.epsExp + slope * (tEnd - t0)));
+    ictx.moveTo(x(t0), y(l0));
+    const tEnd = Math.min(t1, t0 + (hi - l0) / slope);
+    ictx.lineTo(x(tEnd), y(l0 + slope * (tEnd - t0)));
     ictx.stroke();
   }
   ictx.setLineDash([]);
