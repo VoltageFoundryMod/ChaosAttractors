@@ -18,6 +18,8 @@
     <h1>🦋 Strange Attractors</h1>
     <span class="sub">deterministic equations · unpredictable orbits · integrated live</span>
     <span class="spacer"></span>
+    <!-- named target so repeat clicks reuse one tab and never lose the running sim -->
+    <a class="btn" href="guide.html" target="attractors-guide" title="The full study guide">📖 Reference</a>
     <button class="btn" id="btn-help" title="Keyboard shortcuts and notes">? Help</button>
     <button class="btn" id="btn-theme" title="Toggle light / dark">◐ Theme</button>
   </header>
@@ -126,6 +128,26 @@
       <section class="block">
         <h3>System</h3>
         <pre class="eqn" id="equations"></pre>
+
+        <!-- shown only for the Custom system -->
+        <div class="editor" id="editor" hidden>
+          <div class="eq-row"><label for="eq-x">ẋ =</label><input id="eq-x" spellcheck="false" autocomplete="off"></div>
+          <div class="eq-row"><label for="eq-y">ẏ =</label><input id="eq-y" spellcheck="false" autocomplete="off"></div>
+          <div class="eq-row"><label for="eq-z">ż =</label><input id="eq-z" spellcheck="false" autocomplete="off"></div>
+          <p class="eq-status" id="eq-status"></p>
+          <div class="eq-grid">
+            <div><label for="eq-x0">x₀</label><input id="eq-x0" type="number" step="any"></div>
+            <div><label for="eq-y0">y₀</label><input id="eq-y0" type="number" step="any"></div>
+            <div><label for="eq-z0">z₀</label><input id="eq-z0" type="number" step="any"></div>
+            <div><label for="eq-dt">dt</label><input id="eq-dt" type="number" step="any" min="0.00001"></div>
+          </div>
+          <p class="eq-help">
+            <code>x</code> <code>y</code> <code>z</code> are the state · any other name becomes a
+            parameter · <code>sin</code> <code>cos</code> <code>exp</code> <code>sqrt</code>
+            <code>abs</code> <code>**</code> available
+          </p>
+        </div>
+
         <p class="meta" id="credit"></p>
       </section>
 
@@ -136,7 +158,7 @@
       </section>
 
       <section class="block" id="preset-block">
-        <h3>Regimes worth visiting</h3>
+        <h3 id="preset-title">Regimes worth visiting</h3>
         <div class="preset-list" id="presets"></div>
       </section>
 

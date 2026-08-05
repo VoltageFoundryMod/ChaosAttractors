@@ -92,6 +92,7 @@ const sim = {
   prevState: new Float64Array(3),
   sep: [],
   sepEvery: 6,
+  blowups: 0,
   fit: { c: [0, 0, 0], r: 1, target: null },
   view: { yaw: 0, pitch: 0, zoom: 1, panX: 0, panY: 0 },
 };
@@ -250,6 +251,7 @@ function advance(n) {
       const r = sim.runners[ri];
       const sp = rk4(r.s, p, dt, f);
       if (!finite(r.s)) {
+        sim.blowups++;
         resetOrbit();
         return;
       }
@@ -887,6 +889,11 @@ function updateStats() {
   if (sim.runners.length > 1 && sim.sep.length >= 2) {
     $("#s-sep").textContent = fmtExp(sim.sep[sim.sep.length - 1]);
   } else $("#s-sep").textContent = "—";
+
+  if (sim.cfg.editable && !editorError) {
+    const [msg, kind] = verdict();
+    setStatus(msg, kind);
+  }
 }
 
 /* §8 ------------------------------------------------------------ UI build */
@@ -914,12 +921,14 @@ function buildNav() {
 
 function buildParams() {
   const host = $("#params");
+  const editable = sim.cfg.editable;
   host.innerHTML = "";
   const keys = Object.keys(sim.cfg.params);
-  $("#btn-defaults").hidden = keys.length === 0;
+  $("#btn-defaults").hidden = keys.length === 0 || editable;
   if (!keys.length) {
-    host.innerHTML =
-      '<p class="empty-note">No parameters — this system is chaotic as written.</p>';
+    host.innerHTML = editable
+      ? '<p class="empty-note">No parameters yet — use a name other than x, y or z in an equation and a slider will appear here.</p>'
+      : '<p class="empty-note">No parameters — this system is chaotic as written.</p>';
     return;
   }
   for (const k of keys) {
@@ -927,16 +936,46 @@ function buildParams() {
       dec = decimalsFor(d.step);
     const el = document.createElement("div");
     el.className = "param";
+    // a custom system's slider range is a guess, so its value is also typeable
+    const readout = editable
+      ? `<input class="val val--edit" type="number" step="any" id="pn-${k}" value="${sim.p[k]}" aria-label="${d.label} value">`
+      : `<span class="val" id="pv-${k}">${sim.p[k].toFixed(dec)}</span>`;
     el.innerHTML =
-      `<div class="row"><span class="name">${d.label}</span><span class="val" id="pv-${k}">${sim.p[k].toFixed(dec)}</span></div>` +
+      `<div class="row"><span class="name">${d.label}</span>${readout}</div>` +
       (d.note ? `<div class="note">${d.note}</div>` : "") +
       `<input type="range" id="ps-${k}" min="${d.min}" max="${d.max}" step="${d.step}" value="${sim.p[k]}" aria-label="${d.label}">`;
     host.appendChild(el);
-    el.querySelector("input").addEventListener("input", (e) => {
+
+    el.querySelector('input[type="range"]').addEventListener("input", (e) => {
       sim.p[k] = parseFloat(e.target.value);
-      $(`#pv-${k}`).textContent = sim.p[k].toFixed(dec);
+      if (editable) $(`#pn-${k}`).value = sim.p[k];
+      else $(`#pv-${k}`).textContent = sim.p[k].toFixed(dec);
       onParamsChanged();
     });
+
+    if (editable) {
+      $(`#pn-${k}`).addEventListener("change", (e) => {
+        const v = parseFloat(e.target.value);
+        if (!Number.isFinite(v)) return;
+        sim.p[k] = v;
+        // typing a value outside the slider's guessed range widens the range
+        const d2 = sim.cfg.params[k];
+        if (v < d2.min || v > d2.max) {
+          const mag = Math.max(1, Math.abs(v) * 2.5);
+          d2.min = Math.min(d2.min, v >= 0 ? 0 : -mag);
+          d2.max = Math.max(d2.max, mag);
+          d2.step = (d2.max - d2.min) / 1000;
+          const s = $(`#ps-${k}`);
+          s.min = d2.min;
+          s.max = d2.max;
+          s.step = d2.step;
+        }
+        $(`#ps-${k}`).value = v;
+        d2.v = v;
+        onParamsChanged();
+        saveCustom();
+      });
+    }
   }
 }
 
@@ -954,26 +993,310 @@ function syncParamInputs() {
 function onParamsChanged() {
   sim.div.sum = 0;
   sim.div.n = 0;
+  sim.blowups = 0; // new parameters deserve a fresh verdict
   resetLyapunov();
 }
 
 function buildPresets() {
   const host = $("#presets"),
-    list = sim.cfg.presets || [];
+    editable = sim.cfg.editable,
+    list = (editable ? sim.cfg.seeds : sim.cfg.presets) || [];
   $("#preset-block").hidden = list.length === 0;
+  $("#preset-title").textContent = editable
+    ? "Start from"
+    : "Regimes worth visiting";
   host.innerHTML = "";
   for (const pr of list) {
     const b = document.createElement("button");
     b.className = "preset";
     b.innerHTML = `<span class="pn">${pr.name}</span><span class="pd">${pr.note || ""}</span>`;
-    b.onclick = () => {
-      Object.assign(sim.p, pr.p);
-      syncParamInputs();
-      onParamsChanged();
-      clearTrails();
-    };
+    b.onclick = editable
+      ? () => loadSeed(pr)
+      : () => {
+          Object.assign(sim.p, pr.p);
+          syncParamInputs();
+          onParamsChanged();
+          clearTrails();
+        };
     host.appendChild(b);
   }
+}
+
+/* §8b ------------------------------------------------- the custom system
+
+   The editor compiles three JavaScript expressions into a vector field. Any
+   identifier that is not x, y, z or a Math function is promoted to a parameter
+   with its own slider, which is what makes the box a playground rather than a
+   code window: type `a * (y - x)` and an `a` slider appears.
+
+   new Function() is a deliberate choice — this is a local, single-user page and
+   the only author of the code is the person typing it. It buys the full
+   expression language for free, and compiled fields run at the same speed as
+   the catalogued ones.
+*/
+
+const MATH_NAMES = [
+  "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+  "sinh", "cosh", "tanh", "exp", "log", "log2", "log10",
+  "sqrt", "cbrt", "abs", "sign", "pow", "min", "max",
+  "floor", "ceil", "round", "trunc", "hypot", "PI", "E",
+];
+const MATH_SET = new Set(MATH_NAMES);
+const IDENT = /[A-Za-z_$Ͱ-Ͽ][A-Za-z0-9_$Ͱ-Ͽ]*/g;
+
+/** Accept the typographic characters people paste in from papers. */
+function normaliseExpr(s) {
+  return String(s)
+    .replace(/[−–—]/g, "-")
+    .replace(/[×·⋅]/g, "*")
+    .replace(/[÷]/g, "/")
+    .replace(/\^/g, "**")
+    .replace(/²/g, "**2")
+    .replace(/³/g, "**3")
+    .trim();
+}
+
+/**
+ * Compile [ẋ, ẏ, ż] expressions. Returns { f, params } or { error }.
+ * Nothing is applied to the running simulation until it has been test-called.
+ */
+function compileField(exprs) {
+  const src = exprs.map(normaliseExpr);
+  if (src.some((s) => !s)) return { error: "All three equations are required." };
+
+  // check each line on its own first, so the message can name the culprit
+  const LABEL = ["ẋ", "ẏ", "ż"];
+  for (let i = 0; i < 3; i++) {
+    const opens = (src[i].match(/\(/g) || []).length;
+    const closes = (src[i].match(/\)/g) || []).length;
+    if (opens !== closes)
+      return { error: `${LABEL[i]}: unbalanced parentheses (${opens} “(” vs ${closes} “)”)` };
+    try {
+      new Function(`return (${src[i]});`);
+    } catch (e) {
+      return { error: `${LABEL[i]}: ${e.message}` };
+    }
+  }
+
+  const names = new Set();
+  for (const s of src) {
+    for (const m of s.match(IDENT) || []) {
+      if (!["x", "y", "z"].includes(m) && !MATH_SET.has(m)) names.add(m);
+    }
+  }
+  const params = [...names];
+
+  let f;
+  try {
+    const preamble = `const {${MATH_NAMES.join(",")}}=Math;`;
+    const decls = params.map((k) => `const ${k}=p.${k};`).join("");
+    f = new Function(
+      "x", "y", "z", "p", "o",
+      `${preamble}${decls}o[0]=(${src[0]});o[1]=(${src[1]});o[2]=(${src[2]});`,
+    );
+  } catch (e) {
+    return { error: e.message };
+  }
+
+  // test-fire before letting it near the render loop
+  const probe = {}, out = new Float64Array(3);
+  for (const k of params) probe[k] = 1;
+  try {
+    f(0.1, 0.2, 0.3, probe, out);
+  } catch (e) {
+    return { error: e.message };
+  }
+  if (![...out].every(Number.isFinite))
+    return { error: "Not a number at the test point — check for /0 or log of a negative." };
+
+  return { f, params };
+}
+
+/* while this holds a message the live verdict stays out of the way */
+let editorError = null;
+
+function setStatus(msg, kind) {
+  const el = $("#eq-status");
+  el.textContent = msg || "";
+  el.className = "eq-status" + (kind ? " is-" + kind : "");
+}
+
+/** Read the editor, compile, and swap the field in if it is valid. */
+function applyEditor(restart) {
+  const cfg = ATTRACTORS.custom;
+  const res = compileField([$("#eq-x").value, $("#eq-y").value, $("#eq-z").value]);
+  if (res.error) {
+    editorError = res.error;
+    setStatus(res.error, "bad");
+    return false;
+  }
+  editorError = null;
+
+  // keep values and ranges for parameters that survived the edit
+  const old = cfg.params;
+  const next = {};
+  for (const k of res.params) {
+    next[k] = old[k]
+      ? { ...old[k], v: k in sim.p ? sim.p[k] : old[k].v }
+      : { v: 1, min: -10, max: 10, step: 0.01, label: k };
+  }
+  cfg.params = next;
+  cfg.f = res.f;
+  cfg.equations = ["ẋ = " + $("#eq-x").value, "ẏ = " + $("#eq-y").value, "ż = " + $("#eq-z").value];
+
+  sim.p = {};
+  for (const k of res.params) sim.p[k] = next[k].v;
+
+  const dt = parseFloat($("#eq-dt").value);
+  if (Number.isFinite(dt) && dt > 0) cfg.dt = Math.min(0.2, dt);
+  cfg.init = ["x0", "y0", "z0"].map((id, i) => {
+    const v = parseFloat($("#eq-" + id).value);
+    return Number.isFinite(v) ? v : cfg.init[i];
+  });
+
+  buildParams();
+  setStatus("", null);
+  sim.blowups = 0;
+  if (restart) rebuildRunners();
+  else {
+    onParamsChanged();
+    clearTrails();
+  }
+  saveCustom();
+  return true;
+}
+
+function loadSeed(seed) {
+  const cfg = ATTRACTORS.custom;
+  cfg.params = {};
+  for (const [k, v] of Object.entries(seed.params)) {
+    const mag = Math.max(1, Math.abs(v) * 2.5);
+    cfg.params[k] = {
+      v,
+      min: v >= 0 ? 0 : -mag,
+      max: mag,
+      step: mag / 1000,
+      label: k,
+    };
+  }
+  sim.p = { ...seed.params };
+  $("#eq-x").value = seed.eq[0];
+  $("#eq-y").value = seed.eq[1];
+  $("#eq-z").value = seed.eq[2];
+  $("#eq-dt").value = seed.dt;
+  ["x0", "y0", "z0"].forEach((id, i) => ($("#eq-" + id).value = seed.init[i]));
+  cfg.init = [...seed.init];
+  cfg.dt = seed.dt;
+  cfg.view = { ...cfg.view, center: [0, 0, 0], radius: 10 };
+  sim.fit.c = [0, 0, 0];
+  sim.fit.r = 10;
+  applyEditor(true);
+}
+
+function saveCustom() {
+  const cfg = ATTRACTORS.custom;
+  try {
+    localStorage.setItem(
+      "attractors-custom",
+      JSON.stringify({
+        eq: [$("#eq-x").value, $("#eq-y").value, $("#eq-z").value],
+        params: cfg.params,
+        values: sim.p,
+        init: cfg.init,
+        dt: cfg.dt,
+      }),
+    );
+  } catch (e) {
+    /* private mode, quota — the editor still works, it just will not persist */
+  }
+}
+
+function restoreCustom() {
+  const cfg = ATTRACTORS.custom;
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem("attractors-custom"));
+  } catch (e) { /* corrupt entry — fall through to the default seed */ }
+
+  if (!saved?.eq) {
+    loadSeed(cfg.seeds[0]);
+    return;
+  }
+  cfg.params = saved.params || {};
+  cfg.init = saved.init || cfg.init;
+  cfg.dt = saved.dt || cfg.dt;
+  sim.p = { ...saved.values };
+  $("#eq-x").value = saved.eq[0];
+  $("#eq-y").value = saved.eq[1];
+  $("#eq-z").value = saved.eq[2];
+  $("#eq-dt").value = cfg.dt;
+  ["x0", "y0", "z0"].forEach((id, i) => ($("#eq-" + id).value = cfg.init[i]));
+  applyEditor(true);
+}
+
+let editorTimer = null;
+for (const id of ["#eq-x", "#eq-y", "#eq-z"]) {
+  $(id).addEventListener("input", () => {
+    clearTimeout(editorTimer);
+    editorTimer = setTimeout(() => applyEditor(true), 450);
+  });
+}
+for (const id of ["#eq-x0", "#eq-y0", "#eq-z0", "#eq-dt"]) {
+  $(id).addEventListener("change", () => applyEditor(true));
+}
+
+/**
+ * Plain-language verdict for the custom system, from the same measurements the
+ * diagnostics row shows. This is the payoff of the whole editor: type
+ * something, find out what it is.
+ */
+function verdict() {
+  if (sim.blowups > 0)
+    return ["escaping to infinity — try a smaller dt, or smaller parameters", "bad"];
+
+  const L = sim.lyap.val;
+  const tr = sim.runners[0].trail;
+
+  /*
+   * "Has it stopped?" is asked in two scale-free ways, because a decaying orbit
+   * and one that stopped long ago look different in the buffer: either the
+   * recent speed has collapsed relative to the orbit's own typical speed, or
+   * the last stretch of trail occupies no measurable volume.
+   */
+  if (tr.n > 400) {
+    const N = 120;
+    let recent = 0;
+    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (let k = tr.n - N; k < tr.n; k++) {
+      const i = tr.idx(k);
+      recent += tr.v[i];
+      for (let c = 0; c < 3; c++) {
+        const v = tr.p[i * 3 + c];
+        if (v < lo[c]) lo[c] = v;
+        if (v > hi[c]) hi[c] = v;
+      }
+    }
+    recent /= N;
+
+    let typical = 0, samples = 0;
+    for (let k = 0; k < tr.n; k += Math.max(1, (tr.n / 250) | 0)) {
+      typical += tr.v[tr.idx(k)];
+      samples++;
+    }
+    typical /= samples || 1;
+
+    const span = Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
+    if (recent < 0.02 * typical || span < 1e-9)
+      return ["settled onto a fixed point — the orbit has stopped moving", "flat"];
+  }
+
+  if (L === null) return ["measuring…", null];
+  if (L > 0.01) return [`chaotic · λ₁ = +${L.toFixed(3)}`, "good"];
+  // λ₁ ≈ 0 covers cycles, tori, and orbits creeping to a stop too slowly to
+  // call — all it rules out with confidence is chaos, so claim only that
+  if (L > -0.01)
+    return ["λ₁ ≈ 0 · not chaos — a cycle, a torus, or drifting to a stop", "flat"];
+  return ["λ₁ < 0 · contracting onto a cycle or a point", "flat"];
 }
 
 function renderLegend() {
@@ -991,6 +1314,14 @@ function renderLegend() {
   }
   el.innerHTML = html;
 }
+
+/* which part of guide.html covers each family (anchors from build-guide.js) */
+const GUIDE_SECTION = {
+  classic: "the-classics",
+  modern: "the-wider-zoo",
+  minimal: "minimal-and-unusual",
+  custom: "5-the-playground",
+};
 
 function select(id) {
   if (!ATTRACTORS[id]) id = "lorenz";
@@ -1021,6 +1352,7 @@ function select(id) {
   $("#sel-section").value = String(ui.sectionAxis);
 
   buildLUT(cfg.palette);
+  sim.blowups = 0;
   rebuildRunners();
 
   document
@@ -1032,6 +1364,8 @@ function select(id) {
   $("#title").textContent = cfg.name;
   $("#tagline").textContent = cfg.tagline;
   $("#equations").textContent = cfg.equations.join("\n");
+  $("#equations").hidden = !!cfg.editable;
+  $("#editor").hidden = !cfg.editable;
   const creditBits = [
     `${esc(cfg.author)} · ${esc(cfg.year)} · dt = ${esc(cfg.dt)}`,
   ];
@@ -1043,12 +1377,18 @@ function select(id) {
     creditBits.push(
       `ref: ${extLink(cfg.reference.url, cfg.reference.label || "reference")}`,
     );
+  // the custom system has no author or fixed dt to credit — the editor owns both
   $("#credit").innerHTML = creditBits.join(" · ");
-  $("#about").innerHTML = `<p>${cfg.about}</p>`;
+  $("#credit").hidden = !!cfg.editable;
+  $("#about").innerHTML =
+    `<p>${cfg.about}</p>` +
+    `<p class="guide-link"><a href="guide.html#${GUIDE_SECTION[cfg.family] || "4-the-catalogue"}" target="attractors-guide">Read more in the reference →</a></p>`;
   $("#tips").innerHTML = (cfg.tips || []).map((t) => `<li>${t}</li>`).join("");
 
   buildParams();
   buildPresets();
+  // the editor owns the custom system's field, initial state and dt
+  if (cfg.editable) restoreCustom();
   history.replaceState(null, "", "#" + id);
   document.title = `${cfg.name} — Strange Attractors`;
 }

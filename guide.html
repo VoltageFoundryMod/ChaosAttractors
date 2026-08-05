@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference — Strange Attractors</title>
+<meta name="description" content="Study guide to deterministic chaos: what strange attractors are, how to read Lyapunov diagnostics, and a catalogue of fifteen systems.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🦋</text></svg>">
+</head>
+<body class="g-body">
+
+<header class="masthead">
+  <h1>Strange Attractors</h1>
+  <span class="sub">reference</span>
+  <span class="spacer"></span>
+  <button class="btn" id="btn-refresh" title="Re-render this page from Readme.md">⟳ Refresh</button>
+  <a class="btn" href="index.html">← Back to the simulator</a>
+  <button class="btn" id="btn-theme" title="Toggle light / dark">◐ Theme</button>
+</header>
+
+<p class="g-status" id="g-status" hidden></p>
+
+<div class="g-shell">
+  <nav class="g-toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <div class="g-toc-list" id="g-toc-list">
+      <a class="g-toc-item g-toc-2" href="#1-what-a-strange-attractor-is">1. What a strange attractor is</a>
+      <a class="g-toc-item g-toc-3" href="#the-mechanism-stretch-and-fold">The mechanism: stretch and fold</a>
+      <a class="g-toc-item g-toc-3" href="#the-story">The story</a>
+      <a class="g-toc-item g-toc-2" href="#2-reading-the-diagnostics">2. Reading the diagnostics</a>
+      <a class="g-toc-item g-toc-3" href="#the-largest-lyapunov-exponent">λ₁ — the largest Lyapunov exponent</a>
+      <a class="g-toc-item g-toc-3" href="#the-divergence-of-the-flow">Σλ — the divergence of the flow</a>
+      <a class="g-toc-item g-toc-3" href="#d-the-kaplan-yorke-dimension">D — the Kaplan–Yorke dimension</a>
+      <a class="g-toc-item g-toc-3" href="#separation">separation</a>
+      <a class="g-toc-item g-toc-2" href="#3-using-it">3. Using it</a>
+      <a class="g-toc-item g-toc-3" href="#layout">Layout</a>
+      <a class="g-toc-item g-toc-3" href="#the-view">The view</a>
+      <a class="g-toc-item g-toc-3" href="#the-lower-panel">The lower panel</a>
+      <a class="g-toc-item g-toc-3" href="#keyboard">Keyboard</a>
+      <a class="g-toc-item g-toc-2" href="#4-the-catalogue">4. The catalogue</a>
+      <a class="g-toc-item g-toc-3" href="#the-classics">The classics</a>
+      <a class="g-toc-item g-toc-3" href="#the-wider-zoo">The wider zoo</a>
+      <a class="g-toc-item g-toc-3" href="#minimal-and-unusual">Minimal and unusual</a>
+      <a class="g-toc-item g-toc-2" href="#5-the-playground">5. The playground</a>
+      <a class="g-toc-item g-toc-2" href="#6-a-suggested-path">6. A suggested path</a>
+      <a class="g-toc-item g-toc-2" href="#7-how-it-works">7. How it works</a>
+      <a class="g-toc-item g-toc-3" href="#honest-numerics">Honest numerics</a>
+      <a class="g-toc-item g-toc-2" href="#8-adding-your-own">8. Adding your own</a>
+      <a class="g-toc-item g-toc-2" href="#9-glossary">9. Glossary</a>
+      <a class="g-toc-item g-toc-2" href="#10-further-reading">10. Further reading</a>
+      <a class="g-toc-item g-toc-3" href="#where-this-shows-up-elsewhere">Where this shows up elsewhere</a>
+    </div>
+  </nav>
+  <main class="g-doc" id="g-doc">
+<h1 id="strange-attractors"><a class="g-anchor" href="#strange-attractors">Strange Attractors</a></h1>
+<p>An interactive study guide to deterministic chaos: fifteen chaotic systems, integrated live in the browser, with a rotatable 3-D view, parameter sweeps, Poincaré sections, and Lyapunov diagnostics computed as you watch.</p>
+<p><strong>Open <code>index.html</code> in a browser.</strong> No build step, no server, no dependencies — double-clicking the file works.</p>
+<pre class="g-code" data-lang="text"><code>index.html      the simulator — layout and controls
+styles.css      the stylesheet (dark by default, light theme included)
+attractors.js   the catalogue: equations, parameters, notes. Start here.
+app.js          integrator, camera, renderer, diagnostics
+
+guide.html      this document, rendered as a reference page
+build-guide.js  regenerates guide.html from Readme.md
+md.js           the Markdown converter, shared by the build and the page</code></pre>
+<p>The <strong>📖 Reference</strong> button in the simulator opens <code>guide.html</code> — this file with a contents sidebar, in the same theme, in its own tab so the simulation keeps running. Each attractor's info panel also links to the section of §4 that covers it.</p>
+<p><code>guide.html</code> is generated and committed, so it works when opened directly from disk — browsers refuse to <code>fetch()</code> a local file from a <code>file://</code> page, so rendering the Markdown at runtime would break the double-click case. <strong>After editing this Readme, run <code>node build-guide.js</code></strong> to regenerate it. That script is the project's only build step and has no dependencies.</p>
+<p><strong>The ⟳ Refresh button</strong> on the reference page re-renders it from the current <code>Readme.md</code> without a terminal. It cannot run <code>build-guide.js</code> — a web page has no shell and no write access to disk, on any protocol — so what it does instead depends on how the page was opened:</p>
+<div class="g-tablewrap"><table><thead><tr><th>Opened as</th><th>What Refresh does</th></tr></thead><tbody><tr><td><code>http://</code> (any local server)</td><td>fetches <code>Readme.md</code> and re-renders immediately</td></tr><tr><td><code>file://</code></td><td><code>fetch</code> is blocked by the opaque origin, so it opens a file picker — choose <code>Readme.md</code></td></tr></tbody></table></div>
+<p>You can also <strong>drag a <code>.md</code> file onto the page</strong> at any time, which works in both cases. Both routes use the same converter as the build, <code>md.js</code>, so the result is identical to what the script would produce.</p>
+<p>The re-render lives in that tab only; nothing is written. When you are happy with it, run <code>node build-guide.js</code> to update the committed page.</p>
+<hr>
+<h2 id="1-what-a-strange-attractor-is"><a class="g-anchor" href="#1-what-a-strange-attractor-is">1. What a strange attractor is</a></h2>
+<p>Take a system whose future is completely determined by its present — three coupled differential equations, no randomness anywhere. Start it somewhere and let it run. Three things can happen:</p>
+<ul><li>it settles onto a <strong>fixed point</strong> and stops;</li><li>it settles onto a <strong>limit cycle</strong> and repeats forever;</li><li>or it settles onto a <strong>strange attractor</strong> — a bounded region it never leaves and a path it never retraces.</li></ul>
+<p>The third case is the interesting one. The orbit is confined, so it cannot run away. It never repeats, so it cannot be predicted by looking up what happened last time. And it is <em>attracting</em>: start anywhere in a large surrounding volume and you are pulled onto the same shape. The shape is the destiny of the system.</p>
+<p>Four properties, together, are what &quot;chaos&quot; means:</p>
+<div class="g-tablewrap"><table><thead><tr><th>Property</th><th>What it means</th><th>Where you see it here</th></tr></thead><tbody><tr><td>Deterministic</td><td>no noise, no randomness; same input → same output</td><td>reset twice, get the identical orbit</td></tr><tr><td>Bounded</td><td>the orbit never escapes to infinity</td><td>the attractor stays in frame</td></tr><tr><td>Aperiodic</td><td>it never exactly repeats</td><td>the trail never closes</td></tr><tr><td>Sensitive to initial conditions</td><td>nearby starts diverge exponentially</td><td>λ₁ &gt; 0 in the diagnostics</td></tr></tbody></table></div>
+<p>That last property is the definition, and it is measurable — which is what most of the instrumentation in this simulator exists to do.</p>
+<h3 id="the-mechanism-stretch-and-fold"><a class="g-anchor" href="#the-mechanism-stretch-and-fold">The mechanism: stretch and fold</a></h3>
+<p>Bounded <em>and</em> exponentially diverging sounds contradictory. It is not, and Rössler's attractor is the clearest demonstration: the orbit spirals outward in a plane (<strong>stretching</strong> — neighbours pull apart), and when it strays too far it is lifted, carried over, and dropped back near the centre (<strong>folding</strong> — distant points are brought back together). Stretch pulls information apart; fold keeps the whole thing in a box. Repeat forever and you get a set that is infinitely layered — a fractal.</p>
+<p>Watch it happen: load <strong>Rössler</strong>, use the <strong>XY</strong> view to see the spiral, then <strong>XZ</strong> to see the fold that is invisible edge-on.</p>
+<h3 id="the-story"><a class="g-anchor" href="#the-story">The story</a></h3>
+<p>In 1961 Edward Lorenz was re-running a weather simulation and, to save time, restarted it from the middle by typing in a value from a printout: <code>0.506</code> instead of the stored <code>0.506127</code>. The new run tracked the old one for a while, then diverged completely. A difference of one part in four thousand — far below any measurement precision that could ever exist for the atmosphere — had rewritten the forecast.</p>
+<p>He published the three-equation model in 1963 as <em>Deterministic Nonperiodic Flow</em>, and gave a 1972 talk titled <em>&quot;Does the flap of a butterfly's wings in Brazil set off a tornado in Texas?&quot;</em> The name stuck.</p>
+<p>The uncomfortable implication is not that weather is complicated. It is that <strong>three simple equations are enough</strong>. Complexity in nature does not require complex causes.</p>
+<hr>
+<h2 id="2-reading-the-diagnostics"><a class="g-anchor" href="#2-reading-the-diagnostics">2. Reading the diagnostics</a></h2>
+<p>The four numbers under the canvas are the reason this is a study guide and not a screensaver. They are estimated live and need a few thousand steps to settle; they reset whenever you touch a parameter.</p>
+<h3 id="the-largest-lyapunov-exponent"><a class="g-anchor" href="#the-largest-lyapunov-exponent">λ₁ — the largest Lyapunov exponent</a></h3>
+<p>Two orbits starting a distance <em>d₀</em> apart separate roughly as</p>
+<pre class="g-code" data-lang="text"><code>d(t) ≈ d₀ · e^(λ₁ t)</code></pre>
+<p><strong>λ₁ &gt; 0 is the definition of chaos.</strong> It is measured here by Benettin's algorithm: carry a shadow orbit a tiny fixed distance away, advance both one step, record how much the gap grew, then pull the shadow back to the original distance along the same direction. The average of log(growth) per unit time is λ₁.</p>
+<p>The practical meaning is a <strong>forecast horizon</strong>. To keep prediction error under some tolerance, halving your initial uncertainty buys you only <code>ln2 / λ₁</code> more time. For Lorenz (λ₁ ≈ 0.9) that is about 0.8 time units per doubling of precision — which is why a thousandfold better measurement extends the forecast by a factor of nothing much. Turn on the <strong>divergence panel</strong> with two ghost trajectories to see this as a picture: a straight exponential ramp, then a hard ceiling where the two orbits are as far apart as the attractor is wide and the forecast is worth exactly zero.</p>
+<h3 id="the-divergence-of-the-flow"><a class="g-anchor" href="#the-divergence-of-the-flow">Σλ — the divergence of the flow</a></h3>
+<p>∇·F, averaged along the orbit: the rate at which a blob of initial conditions loses volume. For dissipative systems it is negative, and every visible detail of the attractor follows from the combination:</p>
+<blockquote><strong>volume shrinks to zero (Σλ &lt; 0) while lengths grow (λ₁ &gt; 0).</strong></blockquote>
+<p>A set that has zero volume but is stretched in one direction and squeezed in another, folded over on itself endlessly, is a fractal. Not by decoration — by arithmetic.</p>
+<p>For Lorenz this is exactly constant, and the simulator's numerical estimate reproduces it to three decimals:</p>
+<pre class="g-code" data-lang="text"><code>Σλ = −(σ + 1 + β) = −(10 + 1 + 8/3) = −13.667</code></pre>
+<p>Thomas is another clean one: <code>Σλ = −3b</code>, so at b = 0.1998 the panel reads −0.599.</p>
+<h3 id="d-the-kaplan-yorke-dimension"><a class="g-anchor" href="#d-the-kaplan-yorke-dimension">D — the Kaplan–Yorke dimension</a></h3>
+<pre class="g-code" data-lang="text"><code>D = 2 + λ₁ / |λ₃|      (taking λ₂ ≈ 0 and λ₃ = Σλ − λ₁)</code></pre>
+<p>A <em>fractional</em> dimension. Lorenz settles near <strong>2.06</strong>: not a surface (2), not a solid (3), but a surface that is just barely thicker than a surface. This number is what the word &quot;fractal&quot; actually means mathematically, and you can watch it converge.</p>
+<h3 id="separation"><a class="g-anchor" href="#separation">separation</a></h3>
+<p>Straight-line distance between the reference orbit and the first ghost, once ghost trajectories are switched on.</p>
+<hr>
+<h2 id="3-using-it"><a class="g-anchor" href="#3-using-it">3. Using it</a></h2>
+<h3 id="layout"><a class="g-anchor" href="#layout">Layout</a></h3>
+<p>The <strong>left column</strong> is the catalogue. The <strong>centre</strong> is the phase-space view plus the diagnostics and a selectable panel. The <strong>right column</strong> holds the equations, parameter sliders, named regimes worth visiting, simulation settings, and notes for the current system.</p>
+<h3 id="the-view"><a class="g-anchor" href="#the-view">The view</a></h3>
+<p>Drag to rotate, wheel to zoom, shift-drag to pan, double-click to reset. <strong>XZ / XY / YZ / ISO</strong> snap to standard projections, and the little gizmo in the corner shows where each axis currently points. Several attractors are unrecognisable between one projection and another — Aizawa most dramatically.</p>
+<p>Trail colour can encode <strong>age</strong> (default), <strong>speed</strong> (where the orbit lingers vs. races — try it on Aizawa) or <strong>depth</strong> (distance from the camera).</p>
+<h3 id="the-lower-panel"><a class="g-anchor" href="#the-lower-panel">The lower panel</a></h3>
+<ul><li><strong>x, y, z vs time</strong> — the same orbit unrolled. Three separate strips with three independent scales, because the variables have different ranges and stacking them on one axis would be a lie. This is what an experimentalist would actually have recorded.</li><li><strong>divergence of nearby starts</strong> — log separation vs time, with the measured λ₁ slope drawn alongside and the saturation ceiling marked. Needs at least one ghost trajectory; it turns one on for you.</li><li><strong>Poincaré section</strong> — instead of watching the whole flow, record only where it pierces a chosen plane. A continuous 3-D flow collapses to a discrete 2-D map, and the fractal cross-section becomes directly visible: for Rössler the crossings fall on what is very nearly a curve, and that curve is essentially the logistic map in disguise.</li></ul>
+<h3 id="keyboard"><a class="g-anchor" href="#keyboard">Keyboard</a></h3>
+<div class="g-tablewrap"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>Space</code></td><td>pause / resume</td></tr><tr><td><code>R</code> · <code>C</code></td><td>reset the orbit · clear the trail</td></tr><tr><td><code>1</code> <code>2</code> <code>3</code> <code>4</code></td><td>XZ · XY · YZ · ISO</td></tr><tr><td><code>←</code> <code>→</code> <code>↑</code> <code>↓</code></td><td>rotate</td></tr><tr><td><code>+</code> <code>−</code></td><td>zoom</td></tr><tr><td><code>F</code> · <code>S</code></td><td>fit the view · toggle spin</td></tr><tr><td><code>[</code> <code>]</code></td><td>previous / next attractor</td></tr><tr><td><code>G</code></td><td>add / remove a ghost trajectory</td></tr></tbody></table></div>
+<p>Each attractor has its own URL: <code>index.html#aizawa</code>.</p>
+<hr>
+<h2 id="4-the-catalogue"><a class="g-anchor" href="#4-the-catalogue">4. The catalogue</a></h2>
+<p>λ₁ below was measured by integrating each system at its default parameters for the time span shown, using the same RK4 core the browser runs. The published values, where they exist, agree — Sprott's own tabulated exponents for cases B and C are 0.210 and 0.163.</p>
+<h3 id="the-classics"><a class="g-anchor" href="#the-classics">The classics</a></h3>
+<div class="g-tablewrap"><table><thead><tr><th>System</th><th>Year</th><th>λ₁</th><th>Note</th></tr></thead><tbody><tr><td><strong>Lorenz</strong></td><td>1963</td><td>+0.904</td><td>Atmospheric convection. The original.</td></tr><tr><td><strong>Rössler</strong></td><td>1976</td><td>+0.077</td><td>Minimal chaos — one nonlinear term.</td></tr><tr><td><strong>Thomas</strong></td><td>1999</td><td>+0.039</td><td>Cyclically symmetric; a walk through a lattice.</td></tr><tr><td><strong>Chua</strong></td><td>1983</td><td>+0.433</td><td>Double scroll — and buildable in hardware.</td></tr></tbody></table></div>
+<pre class="g-code" data-lang="text"><code>Lorenz      ẋ = σ(y − x)          σ = 10, ρ = 28, β = 8/3
+            ẏ = x(ρ − z) − y
+            ż = xy − βz
+
+Rössler     ẋ = −y − z            a = 0.2, b = 0.2, c = 5.7
+            ẏ = x + ay
+            ż = b + z(x − c)
+
+Thomas      ẋ = sin y − bx        b = 0.1998
+            ẏ = sin z − by
+            ż = sin x − bz
+
+Chua        ẋ = α(y − x − h(x))   α = 15.6, β = 28
+            ẏ = x − y + z         m₀ = −1.143, m₁ = −0.714
+            ż = −βy
+            h(x) = m₁x + ½(m₀ − m₁)(|x + 1| − |x − 1|)</code></pre>
+<p><strong>Lorenz.</strong> Drop ρ below 24.74 and the attractor dies — the orbit falls into a fixed point and stays. ρ = 24 gives a long chaotic <em>transient</em> that eventually collapses, which is a useful reminder that &quot;looks chaotic for a while&quot; and &quot;is chaotic&quot; are different claims. Chaos is also not monotone in ρ: the preset at ρ = 99.65 is a clean periodic window sitting inside the chaotic range.</p>
+<p><strong>Rössler.</strong> The presets walk the <strong>period-doubling cascade</strong> — period-1 at c = 2.5, period-2 at 3.5, period-4 at 4.1, chaos at 5.7. Each split happens at a smaller interval than the last, by a universal ratio (Feigenbaum's δ ≈ 4.669) that is the same for an enormous class of unrelated systems. Five clicks, and you have seen one of the deepest results in the field.</p>
+<p><strong>Thomas.</strong> Below b ≈ 0.208 it is <em>usually</em> chaotic, but chaotic and periodic windows are interleaved, and this is the system where that matters most. The b = 0.19 preset and the b = 0.1998 preset look nearly identical on screen; λ₁ is 0 for one and +0.037 for the other. One is a torus, the other is chaos. <strong>This is what the number is for.</strong> (A curiosity: the diagonal x = y = z is an invariant subspace, so an initial condition on it can never leave — the orbit collapses to a point.)</p>
+<p><strong>Chua.</strong> Sweep α from 6 to 16 and watch a spiral become one scroll, then two. The variables are physical: x and y are capacitor voltages, z is an inductor current, and the whole thing is a real circuit — two capacitors, an inductor, a resistor, and the &quot;Chua diode&quot; (a couple of op-amps with resistors). On a breadboard with a 9-volt battery it produces genuine physical chaos on an oscilloscope. It is the standard demonstration that chaos is not an artefact of computer arithmetic.</p>
+<h3 id="the-wider-zoo"><a class="g-anchor" href="#the-wider-zoo">The wider zoo</a></h3>
+<div class="g-tablewrap"><table><thead><tr><th>System</th><th>Year</th><th>λ₁</th><th>Note</th></tr></thead><tbody><tr><td><strong>Chen</strong></td><td>1999</td><td>+2.025</td><td>Found while <em>trying to control</em> Lorenz.</td></tr><tr><td><strong>Lü</strong></td><td>2002</td><td>+1.387</td><td>The critical case between Lorenz and Chen.</td></tr><tr><td><strong>Halvorsen</strong></td><td>1990</td><td>+0.675</td><td>3-fold cyclic symmetry about x = y = z.</td></tr><tr><td><strong>Aizawa</strong></td><td>1982</td><td>+0.094</td><td>A torus being torn open. Six parameters.</td></tr><tr><td><strong>Dadras</strong></td><td>2009</td><td>+0.421</td><td>Knotted; five parameters to hunt bifurcations with.</td></tr><tr><td><strong>Rabinovich–Fabrikant</strong></td><td>1979</td><td>+0.200</td><td>Wave physics. Notoriously delicate.</td></tr><tr><td><strong>Burke–Shaw</strong></td><td>1981</td><td>+0.695</td><td>Tightly wound double spiral.</td></tr><tr><td><strong>Finance</strong></td><td>2001</td><td>+0.095</td><td>Interest rate, investment demand, price index.</td></tr></tbody></table></div>
+<p><strong>Chen</strong> is the good story: Guanrong Chen applied feedback control to the Lorenz system to tame it, and the controlled system turned out to be a <em>new</em> chaotic attractor — topologically not equivalent to Lorenz despite the resemblance. Lü later found the system exactly on the boundary between them. Put all three in the XZ view in turn; the family resemblance and the differences are both real.</p>
+<p><strong>Halvorsen</strong> has each equation identical to the last with the variables rotated, so the attractor has exact 3-fold symmetry about the diagonal. Rotate until the three scrolls line up and you are looking straight down x = y = z.</p>
+<p><strong>Finance</strong> is what it says: x is the interest rate, y is investment demand, z is the price index. There are no shocks, no news, and no noise in the model, and the trajectory still never repeats. It is a mathematical argument that an economy can be unforecastable purely from its own internal feedback. Open the time-series panel — it looks like market data because it is the same kind of object.</p>
+<p><strong>Rabinovich–Fabrikant</strong> is the cautionary tale, and it is worth dwelling on. The most-reproduced picture of it, at α = 0.14, γ = 0.10, measures <strong>λ₁ ≈ 0</strong> — it is a torus, not a strange attractor, and it is captioned wrongly all over the internet. Meanwhile α = 1.1, γ = 0.87 (the default here) gives a genuinely chaotic attractor that looks nothing like it, and α = 0.05, γ = 0.05 escapes to infinity, which the simulator shows you by repeatedly resetting. Same three equations, three completely different fates. Several published RF &quot;attractors&quot; have turned out to be artefacts of the integrator.</p>
+<h3 id="minimal-and-unusual"><a class="g-anchor" href="#minimal-and-unusual">Minimal and unusual</a></h3>
+<div class="g-tablewrap"><table><thead><tr><th>System</th><th>Year</th><th>λ₁</th><th>Note</th></tr></thead><tbody><tr><td><strong>Sprott B</strong></td><td>1994</td><td>+0.207</td><td>Chaos with no parameters at all.</td></tr><tr><td><strong>Sprott C</strong></td><td>1994</td><td>+0.161</td><td>One term different from B.</td></tr><tr><td><strong>Nosé–Hoover</strong></td><td>1984</td><td>+0.038</td><td>Conservative — no attractor at all.</td></tr></tbody></table></div>
+<pre class="g-code" data-lang="text"><code>Sprott B    ẋ = yz      Sprott C    ẋ = yz      Nosé–Hoover   ẋ = y
+            ẏ = x − y               ẏ = x − y                 ẏ = −x + yz
+            ż = 1 − xy              ż = 1 − x²                ż = a − y²</code></pre>
+<p>Julien Sprott brute-forced millions of simple polynomial ODE systems by computer looking for chaos, and catalogued the survivors — about 19 distinct minimal systems. There are <strong>no sliders</strong> on B and C, and that absence is the entire point: chaos needs no fine tuning. B and C differ by a single character, and they are visibly different objects.</p>
+<p><strong>Nosé–Hoover</strong> is the odd one out and the most instructive comparison in the set. It is a thermostat from molecular dynamics, and it is <em>conservative</em>: phase space volume is preserved, so Σλ ≈ 0 rather than negative. With no contraction, there is nothing for orbits to be attracted <em>to</em> — no attractor exists. What you are watching is a chaotic <em>sea</em>, and unlike every other system here, where you start genuinely determines where you stay. Reset it several times and compare; then look at Σλ, and at every other system's Σλ.</p>
+<hr>
+<h2 id="5-the-playground"><a class="g-anchor" href="#5-the-playground">5. The playground</a></h2>
+<p>The last entry in the catalogue, <strong>Custom</strong>, is a blank system: type three expressions and watch what they do. The diagnostics turn it into something more useful than a drawing toy — they tell you <em>what you found</em>, in one line under the equations:</p>
+<pre class="g-code" data-lang="text"><code>chaotic · λ₁ = +0.350
+λ₁ ≈ 0 · not chaos — a cycle, a torus, or drifting to a stop
+settled onto a fixed point — the orbit has stopped moving
+escaping to infinity — try a smaller dt, or smaller parameters</code></pre>
+<p>Write the right-hand sides in JavaScript. <code>x</code>, <code>y</code> and <code>z</code> are the state; <strong>any other name becomes a parameter and gets its own slider automatically</strong>, so <code>a * (y - x)</code> produces an <code>a</code> you can drag. <code>sin</code>, <code>cos</code>, <code>exp</code>, <code>sqrt</code>, <code>abs</code>, <code>**</code> and the rest of <code>Math</code> are available unprefixed, and pasted <code>−</code>, <code>×</code>, <code>·</code>, <code>²</code>, <code>³</code> and <code>^</code> are converted for you. Parameter values are typeable as well as draggable, since a slider range for an unknown system is only a guess — type a value outside it and the range widens.</p>
+<p>Below the equations are <code>x₀ y₀ z₀</code> and <code>dt</code>. <strong>The <code>dt</code> box matters more than it looks.</strong> A system that flies off to infinity may be genuinely unbounded, or may just be outrunning the integrator; halving <code>dt</code> distinguishes the two. Your work is kept in <code>localStorage</code>, so it survives a reload.</p>
+<p>The <strong>Start from</strong> buttons load a seed you can mutate, which is where the real learning is. Load Lorenz, change <code>x * y</code> to <code>x * x</code> in the ż equation, and you get a completely different chaotic attractor with λ₁ = +0.35. Delete a term and it usually collapses.</p>
+<p>That collapse is the honest base rate, and it is worth internalising: <strong>most things you type are not chaotic.</strong> They decay to a point or explode. This is exactly why Sprott had to search millions of candidate systems by computer to find his nineteen — and it makes the fact that Lorenz stumbled onto one while modelling the weather look much less inevitable than it does in retrospect.</p>
+<p>Two rules of thumb for hunting: chaos needs <strong>at least three dimensions</strong> and <strong>at least one nonlinear term</strong> (a purely linear system can only decay, explode, or oscillate). Those are necessary, nowhere near sufficient, and the rest is searching.</p>
+<p>To add a permanent system rather than a scratch one, see §8 — or add to the <code>seeds</code> array in the <code>custom</code> entry to make it a starting point.</p>
+<hr>
+<h2 id="6-a-suggested-path"><a class="g-anchor" href="#6-a-suggested-path">6. A suggested path</a></h2>
+<ol><li><strong>Lorenz, ghosts on, ε = 1e−6, divergence panel.</strong> Watch two orbits agree perfectly, then not. This is the whole subject in one screen.</li><li><strong>Lorenz, ρ from 28 down through 24.74.</strong> Chaos → long transient → a fixed point. Attractors are born and die as parameters move.</li><li><strong>Rössler, the five presets in order.</strong> The period-doubling road to chaos.</li><li><strong>Rössler, Poincaré section on x = 0.</strong> A 3-D flow becomes a 1-D map.</li><li><strong>Thomas, &quot;Chaotic&quot; vs &quot;Quasi-periodic&quot;.</strong> Two pictures you cannot tell apart, and one number that tells them apart.</li><li><strong>Nosé–Hoover, and Σλ.</strong> Why &quot;strange attractor&quot; and &quot;chaos&quot; are not synonyms.</li><li><strong>Rabinovich–Fabrikant, &quot;The famous picture&quot;.</strong> Why you should measure things rather than trust captions — including the ones in this file.</li><li><strong>Lorenz, watch D converge to ≈ 2.06.</strong> A dimension that is not a whole number.</li></ol>
+<hr>
+<h2 id="7-how-it-works"><a class="g-anchor" href="#7-how-it-works">7. How it works</a></h2>
+<p>Nothing is pre-rendered or cached. Every frame integrates the differential equations forward and redraws from the resulting state.</p>
+<p><strong>Integration.</strong> Classical 4th-order Runge–Kutta at a fixed step, 12–26 steps per animation frame depending on the system's timescale. The step size <code>dt</code> is chosen per attractor; the speed slider changes how many steps run per frame, not the step size, so accuracy does not change when you speed it up. Each step evaluates the vector field four times, and the field functions are written as <code>f(x, y, z, p, out)</code> — writing into a preallocated array rather than returning a new one — so that thousands of steps per second allocate nothing and never trigger garbage collection mid-animation. If a trajectory escapes to infinity, it is detected and reset.</p>
+<p><strong>Projection.</strong> Trail points are stored in 3-D in a fixed-capacity ring buffer and projected each frame through a yaw/pitch orthographic camera, which is why you can rotate a trail that was integrated minutes ago. Depth modulates opacity and line weight to give the shape solidity. The view auto-fits by tracking the bounding box of the retained trail and easing towards it, so an attractor that grows — Thomas at low b keeps discovering new cells of its lattice — stays in frame.</p>
+<p><strong>Rendering.</strong> Drawing 12 000 individual segments as 12 000 strokes would be far slower than a canvas can afford. Instead each segment is quantised into one of <code>colour × opacity</code> buckets and appended to that bucket's <code>Path2D</code>; the frame then costs one stroke per non-empty bucket, usually well under a hundred. Glow is applied only to the brightest buckets, where it actually reads.</p>
+<p><strong>λ₁</strong> is Benettin's algorithm as described above. <strong>Σλ</strong> is ∇·F by central differences, sampled along the orbit and averaged. <strong>Poincaré crossings</strong> are detected by sign change against the plane and located by linear interpolation between the two straddling steps. The <strong>divergence history</strong> keeps its full record back to launch rather than a rolling window: when the buffer fills, every second sample is dropped and the sampling interval doubles, so resolution decays but the exponential ramp never scrolls off the left edge.</p>
+<p><strong>Colour.</strong> The trail ramps are per-attractor and reverse themselves in light mode, so the freshest arc is always the most visible against whichever background is behind it. The three-series palette used in the diagnostic panels is checked for colour-vision-deficiency separation and contrast against both the dark and light canvas surfaces.</p>
+<h3 id="honest-numerics"><a class="g-anchor" href="#honest-numerics">Honest numerics</a></h3>
+<p>Because these systems are chaotic, the computed orbit <strong>is not</strong> the true orbit through your initial point. Round-off at each step acts exactly like the perturbation the diagnostics measure, and it grows at rate λ₁: after enough time the trajectory on screen has no relation to the mathematical one you asked for. No integrator avoids this, and a smaller step size only postpones it.</p>
+<p>What survives is everything that matters. The <em>shape</em> of the attractor, its dimension, its exponents, and its statistics are robust — and there is a theorem about why: the <strong>shadowing lemma</strong> says that a numerical orbit with small per-step error stays close to <em>some</em> true orbit of the system, just not the one you started with. You are looking at a real trajectory of the real system. You are simply not looking at the one you requested, and for chaotic systems that distinction turns out not to matter.</p>
+<p>The two corrections in this repo's own defaults came from taking this seriously and measuring rather than copying: Thomas at the widely-quoted b = 0.19 is a torus, and Rabinovich–Fabrikant's most famous parameters are not measurably chaotic.</p>
+<hr>
+<h2 id="8-adding-your-own"><a class="g-anchor" href="#8-adding-your-own">8. Adding your own</a></h2>
+<p>Everything a system needs is one object in <code>attractors.js</code>; nothing there knows about rendering. The minimum is:</p>
+<pre class="g-code" data-lang="js"><code>myattractor: {
+  name: 'Mine', year: 2026, author: 'You', family: 'modern',
+  tagline: 'One line',
+  about: 'A few sentences.',
+  equations: ['ẋ = …', 'ẏ = …', 'ż = …'],
+  params: { a: { v: 1, min: 0, max: 3, step: 0.01, label: 'a' } },
+  init: [0.1, 0, 0],
+  dt: 0.005, steps: 14,
+  view: { yaw: 0, pitch: 0, center: [0, 0, 0], radius: 10 },
+  palette: ['#0b3550', '#3987e5', '#8fc9f7', '#eaf6ff'],
+  f: (x, y, z, p, o) =&gt; { o[0] = …; o[1] = …; o[2] = …; }
+}</code></pre>
+<p>The framing values do not need to be right — auto-fit corrects them. If λ₁ settles near zero you have found a limit cycle or a torus, not chaos; nudge a parameter and try again.</p>
+<hr>
+<h2 id="9-glossary"><a class="g-anchor" href="#9-glossary">9. Glossary</a></h2>
+<p><strong>Attractor</strong> — a set that nearby trajectories converge onto. <strong>Strange attractor</strong> — one with fractal structure and sensitive dependence. <strong>Basin of attraction</strong> — the set of starting points that end up on it. <strong>Bifurcation</strong> — a qualitative change in behaviour as a parameter crosses a threshold. <strong>Period doubling</strong> — a bifurcation where the orbit's period doubles; an infinite cascade of them is one standard route to chaos. <strong>Dissipative</strong> — phase-space volume contracts (Σλ &lt; 0). <strong>Conservative</strong> — volume is preserved (Σλ = 0); no attractors possible. <strong>Lyapunov exponent</strong> — the exponential rate at which nearby orbits separate. <strong>Fractal dimension</strong> — a non-integer measure of how a set fills space. <strong>Poincaré section</strong> — the record of a flow's crossings of a chosen surface, turning a continuous flow into a discrete map. <strong>Phase space</strong> — the space whose coordinates are the system's state variables; one point is one complete state. <strong>Quasi-periodic</strong> — motion with two or more incommensurable frequencies: never repeating, but not chaotic (λ₁ = 0). <strong>Shadowing</strong> — the property that a numerical orbit stays close to some true orbit.</p>
+<hr>
+<h2 id="10-further-reading"><a class="g-anchor" href="#10-further-reading">10. Further reading</a></h2>
+<ul><li><strong>James Gleick, <em>Chaos: Making a New Science</em> (1987)</strong> — the book that opened this up for everyone. Reads like a thriller, requires no mathematics, and the people in it (Lorenz, Rössler, Shaw, Feigenbaum, Mandelbrot) are the names attached to half the systems in this catalogue.</li><li><strong>Steven Strogatz, _Nonlinear Dynamics and Chaos_</strong> — the standard textbook, and unusually well written. Takes you from zero to deriving these systems yourself, with strong physical intuition throughout.</li><li><strong>Julien C. Sprott, _Chaos and Time-Series Analysis_</strong> and his <a href="http://sprott.physics.wisc.edu/" target="_blank" rel="noopener noreferrer">website</a> — the systematic catalogue, plus the numerical methods used in this simulator.</li><li><strong>Edward Lorenz, &quot;Deterministic Nonperiodic Flow&quot;, <em>J. Atmos. Sci.</em> 20 (1963)</strong> — the original paper. Short, and readable.</li><li>Each attractor's panel links its own key paper and a reference page.</li></ul>
+<h3 id="where-this-shows-up-elsewhere"><a class="g-anchor" href="#where-this-shows-up-elsewhere">Where this shows up elsewhere</a></h3>
+<p>The same mathematics describes dripping faucets, cardiac arrhythmias, population cycles in ecology, and turbulence — same equations, different variable names. Beyond the science, these systems have two lives worth knowing about. In <strong>circuit design</strong>, the Chua family is directly synthesisable in analog hardware. In <strong>analog synthesis</strong>, Thomas, Rössler and Chua are popular patch targets: routed into a modular synth they make LFOs and control voltages that evolve forever without repeating — bounded, structured, and never the same twice, which is a difficult thing to get from a noise source or a sequencer.</p>
+  </main>
+</div>
+
+<p class="g-foot" id="g-foot">Generated from <code>Readme.md</code> by <code>build-guide.js</code>.</p>
+
+<script src="md.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* theme — same storage key as the simulator, so the two always agree */
+  var saved = localStorage.getItem('attractors-theme');
+  if (saved) document.documentElement.dataset.theme = saved;
+  document.getElementById('btn-theme').onclick = function () {
+    var next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('attractors-theme', next);
+  };
+
+  /* ------------------------------------------------ contents highlighting */
+
+  var spy = null;
+  function initSpy() {
+    if (spy) spy.disconnect();
+    var links = [].slice.call(document.querySelectorAll('.g-toc-item'));
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+    var seen = {};
+    spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) seen[e.target.id] = 1; else delete seen[e.target.id];
+      });
+      var current = null;
+      for (var i = 0; i < links.length; i++) {
+        if (seen[links[i].getAttribute('href').slice(1)]) { current = links[i]; break; }
+      }
+      links.forEach(function (a) { a.classList.toggle('is-current', a === current); });
+    }, { rootMargin: '0px 0px -75% 0px' });
+    document.querySelectorAll('h2[id], h3[id]').forEach(function (h) {
+      if (byId[h.id]) spy.observe(h);
+    });
+  }
+  initSpy();
+
+  /* -------------------------------------------------------------- refresh
+
+     A page cannot run build-guide.js — it has no shell and no write access to
+     disk, on any protocol. What it can do is re-render itself from the current
+     Markdown, which is what people actually want after editing the Readme:
+
+       served over http://  fetch('Readme.md') and re-render, no interaction
+       opened from file://  fetch is blocked by the opaque origin, so fall back
+                            to a file picker (or a drag-and-drop of the file)
+
+     Either way the result lives in this tab only. Run build-guide.js to make it
+     permanent.
+  */
+
+  var status = document.getElementById('g-status');
+  var picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = '.md,text/markdown,text/plain';
+
+  function say(msg, kind) {
+    status.textContent = msg;
+    status.className = 'g-status' + (kind ? ' is-' + kind : '');
+    status.hidden = false;
+  }
+
+  function apply(text, origin) {
+    var res = MD.render(text);
+    document.getElementById('g-doc').innerHTML = res.html;
+    document.getElementById('g-toc-list').innerHTML = MD.tocHtml(res.toc);
+    initSpy();
+    var t = new Date().toLocaleTimeString();
+    say('Re-rendered from ' + origin + ' at ' + t +
+        ' — this tab only. Run "node build-guide.js" to update the committed guide.html.', 'ok');
+  }
+
+  picker.onchange = function () {
+    var file = picker.files && picker.files[0];
+    if (!file) return;
+    file.text().then(function (text) { apply(text, file.name); });
+    picker.value = '';
+  };
+
+  document.getElementById('btn-refresh').onclick = function () {
+    fetch('Readme.md', { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        return r.text();
+      })
+      .then(function (text) { apply(text, 'Readme.md'); })
+      .catch(function () {
+        say('Opened from file:// — the browser will not let a local page read another local file. ' +
+            'Pick Readme.md to re-render it, or drag the file onto this page.', 'warn');
+        picker.click();
+      });
+  };
+
+  /* drag a .md file anywhere onto the page */
+  ['dragover', 'drop'].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      e.preventDefault();
+      if (type !== 'drop') return;
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) file.text().then(function (text) { apply(text, file.name); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

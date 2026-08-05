@@ -1067,10 +1067,98 @@ const ATTRACTORS = {
       o[2] = p.a - y * y;
     },
   },
+
+  /* --------------------------------------------------------------- your own */
+
+  custom: {
+    name: "Custom",
+    year: "",
+    author: "You",
+    family: "custom",
+    editable: true,
+    tagline: "Type three equations and find out what they do",
+    about:
+      "A blank system. Write the right-hand sides in JavaScript — <code>x</code>, " +
+      "<code>y</code> and <code>z</code> are the state, every other name you use " +
+      "becomes a parameter with its own slider, and <code>sin</code>, <code>cos</code>, " +
+      "<code>exp</code>, <code>sqrt</code>, <code>abs</code> and the rest of Math are " +
+      "available unprefixed. Most things you type will collapse to a point or fly " +
+      "off to infinity — that is the honest base rate, and it is why Sprott had to " +
+      "search millions of candidates by computer. The diagnostics tell you which " +
+      "one you landed on.",
+    equations: [],
+    params: {},
+    init: [0.1, 0, 0],
+    dt: 0.005,
+    steps: 14,
+    view: { yaw: -25, pitch: 15, center: [0, 0, 0], radius: 10 },
+    palette: ["#3d2a05", "#c98500", "#f0cc7f", "#fff6e0"],
+    section: { axis: 2, offset: 0 },
+    presets: [],
+
+    /* Starting points to mutate. Each is a complete state for the editor. */
+    seeds: [
+      {
+        name: "Lorenz",
+        note: "The classic. Try deleting a term, or squaring one.",
+        eq: ["sigma * (y - x)", "x * (rho - z) - y", "x * y - beta * z"],
+        params: { sigma: 10, rho: 28, beta: 2.667 },
+        init: [0.1, 0, 0],
+        dt: 0.004,
+      },
+      {
+        name: "Rössler",
+        note: "One nonlinear term. Change c and watch the period double.",
+        eq: ["-(y + z)", "x + a * y", "b + z * (x - c)"],
+        params: { a: 0.2, b: 0.2, c: 5.7 },
+        init: [1, 1, 1],
+        dt: 0.012,
+      },
+      {
+        name: "Sprott B",
+        note: "As simple as chaos gets — five terms, no parameters.",
+        eq: ["y * z", "x - y", "1 - x * y"],
+        params: {},
+        init: [0.1, 0, 0],
+        dt: 0.01,
+      },
+      {
+        name: "Damped oscillator",
+        note: "Not chaotic: a spiral into a point. A baseline to break.",
+        eq: ["y", "-k * x - c * y", "0"],
+        params: { k: 1, c: 0.1 },
+        init: [1, 0, 0],
+        dt: 0.01,
+      },
+      {
+        name: "Blank",
+        note: "Start from nothing.",
+        eq: ["y", "z", "-x"],
+        params: {},
+        init: [0.1, 0, 0],
+        dt: 0.01,
+      },
+    ],
+
+    tips: [
+      "Start from a seed and change one term. Mutating Lorenz teaches more than typing something new from scratch.",
+      "If it flies off to infinity, try a smaller dt first — some systems are only unstable numerically. If it still escapes, the system genuinely has no attractor.",
+      "λ₁ ≈ 0 with a bounded orbit means a limit cycle or a torus: never repeating, but not chaos. Positive λ₁ is the real thing.",
+      "Chaos needs at least one nonlinear term and three dimensions. A purely linear system can only decay, blow up, or oscillate.",
+    ],
+
+    // replaced at runtime by the compiled editor expression
+    f: (x, y, z, p, o) => {
+      o[0] = y;
+      o[1] = z;
+      o[2] = -x;
+    },
+  },
 };
 
 const FAMILIES = [
   { id: "classic", label: "Classics" },
   { id: "modern", label: "The wider zoo" },
   { id: "minimal", label: "Minimal & unusual" },
+  { id: "custom", label: "Playground" },
 ];
