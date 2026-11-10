@@ -1801,7 +1801,7 @@ function select(id) {
     restoreCustom();
   }
   history.replaceState(null, "", "#" + id);
-  document.title = `${cfg.name} — Strange Attractors`;
+  document.title = `${cfg.name} — Chaos Attractors`;
 }
 
 /* §9 --------------------------------------------------------------- events */

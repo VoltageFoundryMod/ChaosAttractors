@@ -35,7 +35,7 @@ const page = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reference — Strange Attractors</title>
+<title>Reference — Chaos Attractors</title>
 <meta name="description" content="Study guide to deterministic chaos: what strange attractors are, how to read Lyapunov diagnostics, and a catalogue of fifteen systems.">
 <link rel="canonical" href="https://chaos.vfmod.com/guide">
 <link rel="stylesheet" href="styles.css">
@@ -45,7 +45,7 @@ const page = `<!DOCTYPE html>
 <body class="g-body">
 
 <header class="masthead">
-  <h1>Strange Attractors</h1>
+  <h1>Chaos Attractors</h1>
   <span class="sub">reference</span>
   <span class="spacer"></span>
   <button class="btn" id="btn-refresh" title="Re-render this page from Readme.md">⟳ Refresh</button>

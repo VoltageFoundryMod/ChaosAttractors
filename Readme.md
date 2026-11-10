@@ -1,4 +1,4 @@
-# Strange Attractors
+# Chaos Attractors
 
 An interactive study guide to deterministic chaos: fifteen chaotic systems,
 integrated live in the browser, with a rotatable 3-D view, parameter sweeps,
